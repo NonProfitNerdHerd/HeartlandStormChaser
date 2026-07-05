@@ -1,0 +1,18 @@
+# Dependencies
+node_modules/
+
+# Wrangler local state (includes local D1 SQLite files)
+.wrangler/
+.dev.vars
+
+# Environment secrets — never commit
+.env
+.env.*
+
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+
+# TypeScript build output (we use wrangler, not tsc emit)
+dist/
