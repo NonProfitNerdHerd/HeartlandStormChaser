@@ -13,5 +13,13 @@
     "directory": "./public",
     "binding": "ASSETS",
     "run_worker_first": ["/api/*"]
-  }
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "heartland-storm-chaser-db",
+      "database_id": "7dc1a273-9f9e-4c68-a01a-f69b55a4c57f",
+      "migrations_dir": "migrations"
+    }
+  ]
 }
