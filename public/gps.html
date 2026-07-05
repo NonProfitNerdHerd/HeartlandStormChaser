@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="GPS devices and platform GPS source status for HeartlandStormChaser"
+    />
+    <title>GPS · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/gps.css" />
+  </head>
+  <body data-page="gps">
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-logo" href="/">HeartlandStormChaser</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-link" href="/" data-nav="home">Home</a>
+          <a class="nav-link" href="/dashboard.html" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/gps.html" data-nav="gps">GPS</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams"
+            >Chasers Streams</a
+          >
+          <a class="nav-link" href="/settings.html" data-nav="settings">Settings</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-main site-main--wide">
+      <header class="page-header">
+        <h1>GPS</h1>
+        <p class="page-header__lead">
+          Registered Android GPS devices, platform GPS source, and live/stale status. Updates refresh
+          every 10 seconds.
+        </p>
+      </header>
+
+      <div class="gps-toolbar">
+        <p class="gps-toolbar__status" id="refresh-status">Loading GPS data…</p>
+        <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh now</button>
+      </div>
+
+      <div class="gps-layout">
+        <section class="gps-panel gps-panel--platform" aria-labelledby="platform-heading">
+          <div class="gps-panel__header">
+            <h2 class="gps-panel__title" id="platform-heading">Platform GPS source</h2>
+            <span class="badge badge--muted" id="platform-status-badge">—</span>
+          </div>
+          <div class="gps-panel__body" id="platform-body">
+            <p class="gps-empty">Loading…</p>
+          </div>
+        </section>
+
+        <aside class="gps-panel gps-panel--android" aria-labelledby="android-heading">
+          <h2 class="gps-panel__title" id="android-heading">Android app</h2>
+          <div class="gps-android" id="android-section">
+            <p class="gps-empty">Loading download info…</p>
+          </div>
+        </aside>
+      </div>
+
+      <section class="gps-panel gps-panel--weather" aria-labelledby="weather-heading">
+        <div class="gps-panel__header">
+          <h2 class="gps-panel__title" id="weather-heading">Platform weather</h2>
+          <span class="badge badge--muted" id="weather-status-badge">—</span>
+        </div>
+        <div class="gps-panel__body gps-weather-body" id="weather-body">
+          <p class="gps-empty">Loading weather…</p>
+        </div>
+      </section>
+
+      <section class="gps-panel" aria-labelledby="devices-heading">
+        <div class="gps-panel__header">
+          <h2 class="gps-panel__title" id="devices-heading">Registered devices</h2>
+          <span class="gps-device-count" id="device-count">0 devices</span>
+        </div>
+        <div class="gps-table-wrap" id="devices-table-wrap">
+          <table class="gps-table" id="devices-table">
+            <thead>
+              <tr>
+                <th scope="col">Device</th>
+                <th scope="col">Status</th>
+                <th scope="col">Latitude</th>
+                <th scope="col">Longitude</th>
+                <th scope="col">Speed</th>
+                <th scope="col">Heading</th>
+                <th scope="col">Accuracy</th>
+                <th scope="col">Battery</th>
+                <th scope="col">Last update</th>
+                <th scope="col">Platform</th>
+              </tr>
+            </thead>
+            <tbody id="devices-body">
+              <tr>
+                <td colspan="10" class="gps-table__empty">Loading devices…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <footer class="site-footer">
+      <p>HeartlandStormChaser · GPS monitoring</p>
+    </footer>
+
+    <script src="/js/nav.js"></script>
+    <script src="/js/gps.js"></script>
+  </body>
+</html>

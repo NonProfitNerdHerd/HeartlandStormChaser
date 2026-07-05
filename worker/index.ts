@@ -1,12 +1,16 @@
 import { handleChasersStreams } from "./routes/chasers-streams";
 import { handleDbTest } from "./routes/db-test";
+import { handleGps } from "./routes/gps";
 import { handleHealth } from "./routes/health";
+import { handleOverlays } from "./routes/overlays";
+import { handleWeather } from "./routes/weather";
 
 export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
   ENVIRONMENT?: string;
   YOUTUBE_API_KEY?: string;
+  GPS_PAIRING_PIN?: string;
 }
 
 export default {
@@ -23,6 +27,18 @@ export default {
 
     if (url.pathname.startsWith("/api/chasers-streams")) {
       return handleChasersStreams(request, env);
+    }
+
+    if (url.pathname.startsWith("/api/gps")) {
+      return handleGps(request, env);
+    }
+
+    if (url.pathname.startsWith("/api/weather")) {
+      return handleWeather(request, env);
+    }
+
+    if (url.pathname.startsWith("/api/overlays")) {
+      return handleOverlays(request, env);
     }
 
     return env.ASSETS.fetch(request);

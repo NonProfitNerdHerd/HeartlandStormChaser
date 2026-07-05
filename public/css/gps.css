@@ -1,0 +1,241 @@
+/* GPS page */
+
+.site-main--wide {
+  max-width: 96rem;
+}
+
+.gps-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+}
+
+.gps-toolbar__status {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.gps-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 2fr) minmax(16rem, 1fr);
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+@media (max-width: 768px) {
+  .gps-layout {
+    grid-template-columns: 1fr;
+  }
+}
+
+.gps-panel {
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.gps-panel--platform {
+  border-color: rgb(56 189 248 / 0.35);
+  background: linear-gradient(
+    180deg,
+    rgb(56 189 248 / 0.06) 0%,
+    var(--color-bg-card) 40%
+  );
+}
+
+.gps-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1rem;
+}
+
+.gps-panel__title {
+  margin: 0 0 1rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.gps-panel__header .gps-panel__title {
+  margin-bottom: 0;
+}
+
+.gps-panel__body {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.75rem 1.25rem;
+}
+
+.gps-stat {
+  min-width: 0;
+}
+
+.gps-stat__label {
+  display: block;
+  margin-bottom: 0.2rem;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.gps-stat__value {
+  font-size: 0.9375rem;
+  font-family: var(--font-mono);
+  word-break: break-word;
+}
+
+.gps-stat__value--name {
+  font-family: var(--font-sans);
+  font-weight: 600;
+}
+
+.gps-empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
+.gps-weather-body {
+  min-height: 4rem;
+}
+
+.gps-weather-note {
+  margin: 0.75rem 0 0;
+  grid-column: 1 / -1;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.gps-device-count {
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.gps-table-wrap {
+  overflow-x: auto;
+}
+
+.gps-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8125rem;
+}
+
+.gps-table th,
+.gps-table td {
+  padding: 0.75rem 0.625rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.gps-table th {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+}
+
+.gps-table td {
+  font-family: var(--font-mono);
+}
+
+.gps-table td.gps-table__device {
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+.gps-table__empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  font-family: var(--font-sans);
+  font-style: italic;
+}
+
+.gps-table__actions {
+  white-space: nowrap;
+}
+
+.gps-platform-tag {
+  display: inline-block;
+  padding: 0.15rem 0.45rem;
+  border-radius: 999px;
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-accent);
+  background: rgb(56 189 248 / 0.15);
+}
+
+.gps-android {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.gps-android__qr {
+  width: 10rem;
+  height: 10rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: #fff;
+  object-fit: contain;
+}
+
+.gps-android__link {
+  font-size: 0.8125rem;
+  word-break: break-all;
+}
+
+.gps-android__hint {
+  margin: 0;
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+  line-height: 1.5;
+}
+
+.gps-message {
+  margin: 0;
+  padding: 0.75rem 1rem;
+  border-radius: var(--radius-md);
+  font-size: 0.8125rem;
+}
+
+.gps-message--error {
+  color: #fecaca;
+  background: rgb(239 68 68 / 0.12);
+  border: 1px solid rgb(239 68 68 / 0.25);
+}
+
+.gps-message--info {
+  color: var(--color-text-muted);
+  background: var(--color-bg-elevated);
+  border: 1px solid var(--color-border);
+}
+
+.gps-btn--sm {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.75rem;
+}
+
+.gps-btn--active {
+  opacity: 0.55;
+  cursor: default;
+}

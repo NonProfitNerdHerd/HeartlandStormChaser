@@ -9,6 +9,9 @@
   "vars": {
     "ENVIRONMENT": "development"
   },
+  "secrets": {
+    "required": ["YOUTUBE_API_KEY", "GPS_PAIRING_PIN"]
+  },
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",

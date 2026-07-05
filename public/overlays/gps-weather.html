@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>GPS Weather Overlay · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/overlay-gps-weather.css" />
+  </head>
+  <body class="overlay-body">
+    <div class="overlay" id="overlay-root" aria-live="polite">
+      <div class="overlay__status-row">
+        <span class="overlay__badge overlay__badge--muted" id="gps-status-badge">—</span>
+        <span class="overlay__device" id="device-name">HeartlandStormChaser</span>
+      </div>
+
+      <div class="overlay__location" id="location-label">Loading…</div>
+
+      <div class="overlay__grid overlay__grid--gps">
+        <div class="overlay__item">
+          <span class="overlay__label">Lat</span>
+          <span class="overlay__value" id="latitude">—</span>
+        </div>
+        <div class="overlay__item">
+          <span class="overlay__label">Lon</span>
+          <span class="overlay__value" id="longitude">—</span>
+        </div>
+        <div class="overlay__item">
+          <span class="overlay__label">Speed</span>
+          <span class="overlay__value" id="speed">—</span>
+        </div>
+        <div class="overlay__item">
+          <span class="overlay__label">Heading</span>
+          <span class="overlay__value" id="heading">—</span>
+        </div>
+      </div>
+
+      <div class="overlay__weather">
+        <div class="overlay__weather-main">
+          <span class="overlay__temp" id="temperature">—</span>
+          <span class="overlay__conditions" id="conditions">—</span>
+        </div>
+        <div class="overlay__grid overlay__grid--weather">
+          <div class="overlay__item">
+            <span class="overlay__label">Dew</span>
+            <span class="overlay__value" id="dew-point">—</span>
+          </div>
+          <div class="overlay__item">
+            <span class="overlay__label">RH</span>
+            <span class="overlay__value" id="humidity">—</span>
+          </div>
+          <div class="overlay__item">
+            <span class="overlay__label">Wind</span>
+            <span class="overlay__value" id="wind">—</span>
+          </div>
+          <div class="overlay__item">
+            <span class="overlay__label">Gust</span>
+            <span class="overlay__value" id="wind-gusts">—</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="overlay__footer">
+        <span id="last-update">Updated —</span>
+      </div>
+
+      <div class="overlay__empty overlay__empty--hidden" id="empty-state">
+        No Platform GPS Source Selected
+      </div>
+    </div>
+
+    <script src="/js/overlay-gps-weather.js"></script>
+  </body>
+</html>
