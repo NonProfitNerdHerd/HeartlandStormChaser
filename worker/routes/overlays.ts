@@ -36,6 +36,9 @@ const OVERLAY_SETTING_KEYS = [
   "overlay_target_state",
   "overlay_ticker_text",
   "android_app_download_url",
+  "android_app_version_name",
+  "android_app_version_code",
+  "android_app_built_at",
 ] as const;
 
 const WRITABLE_OVERLAY_KEYS = [

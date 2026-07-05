@@ -64,7 +64,31 @@ Set `GPS_PAIRING_PIN` in `.dev.vars` for local GPS pairing tests.
 
 Gradle project in [`android-gps/`](android-gps/). Open that folder in Android Studio, pair against your Worker URL, then use the **GPS** and **Overlays** tabs.
 
-See [`android-gps/README.md`](android-gps/README.md) for build and test steps.
+### Automatic APK builds (GitHub Actions)
+
+Every push to **`main`** runs [`.github/workflows/android-apk.yml`](.github/workflows/android-apk.yml), which:
+
+1. Builds a debug APK from `android-gps/`
+2. Publishes it to **GitHub Releases** (latest release)
+3. Updates D1 overlay settings so `/gps.html` shows the QR code, download link, and **APK version**
+
+**Before each release-worthy push**, bump the version in `android-gps/app/build.gradle.kts`:
+
+```kotlin
+versionCode = 4
+versionName = "0.4.0"
+```
+
+**GitHub repo secrets** (Settings → Secrets and variables → Actions) required for automatic QR updates:
+
+| Secret | Purpose |
+|--------|----------|
+| `CLOUDFLARE_API_TOKEN` | Wrangler access to update D1 overlay settings |
+| `CLOUDFLARE_ACCOUNT_ID` | Your Cloudflare account ID |
+
+If those secrets are missing, the APK still builds and publishes to GitHub Releases, but the GPS page QR code will not update until you set the secrets or manually update `overlay_settings` in D1.
+
+See [`android-gps/README.md`](android-gps/README.md) for local Android Studio build steps.
 
 ## Cloudflare secrets
 

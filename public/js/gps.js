@@ -160,15 +160,40 @@
     }
   }
 
-  function renderAndroidSection(downloadUrl) {
+  function renderAndroidSection(androidApp, legacyDownloadUrl) {
+    var downloadUrl =
+      (androidApp && androidApp.download_url) || legacyDownloadUrl || null;
+    var versionName = androidApp && androidApp.version_name;
+    var versionCode = androidApp && androidApp.version_code;
+    var builtAt = androidApp && androidApp.built_at;
+
     if (!downloadUrl) {
       androidSection.innerHTML =
-        '<p class="gps-message gps-message--info">Android APK download URL is not configured yet. Set <code>android_app_download_url</code> in overlay settings (Phase 4) or directly in the <code>overlay_settings</code> table for now.</p>';
+        '<p class="gps-message gps-message--info">Android APK download URL is not configured yet. Push to <code>main</code> to trigger the GitHub Actions APK build, or set <code>android_app_download_url</code> in overlay settings.</p>';
       return;
     }
 
+    var versionLabel = "—";
+    if (versionName) {
+      versionLabel = "v" + versionName;
+      if (versionCode != null && versionCode !== "") {
+        versionLabel += " (code " + versionCode + ")";
+      }
+    }
+
+    var builtAtLabel = builtAt ? formatTimestamp(builtAt) : "—";
     var encoded = encodeURIComponent(downloadUrl);
+
     androidSection.innerHTML =
+      '<div class="gps-android__version">' +
+      '<span class="gps-android__version-label">Current APK</span>' +
+      '<strong class="gps-android__version-value">' +
+      escapeHtml(versionLabel) +
+      "</strong>" +
+      '<span class="gps-android__version-built">Built ' +
+      escapeHtml(builtAtLabel) +
+      "</span>" +
+      "</div>" +
       '<img class="gps-android__qr" id="android-qr" width="160" height="160" alt="QR code for Android app download" src="https://api.qrserver.com/v1/create-qr-code/?size=160x160&data=' +
       encoded +
       '" />' +
@@ -177,7 +202,7 @@
       '" target="_blank" rel="noopener noreferrer">' +
       escapeHtml(downloadUrl) +
       "</a>" +
-      '<p class="gps-android__hint">Scan the QR code or open the link on your Android device to install the GPS sender app.</p>';
+      '<p class="gps-android__hint">Scan the QR code or open the link on your Android device to install this APK version.</p>';
   }
 
   function renderDevices(devices) {
@@ -298,7 +323,7 @@
 
       renderPlatform(platformData.platform_source);
       renderDevices(devicesData.devices || []);
-      renderAndroidSection(healthData.android_app_download_url);
+      renderAndroidSection(healthData.android_app, healthData.android_app_download_url);
       renderWeather(weatherData);
 
       refreshStatus.textContent =

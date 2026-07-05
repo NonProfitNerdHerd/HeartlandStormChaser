@@ -57,6 +57,14 @@ The app requests location and notification permissions when you enable broadcast
 
 ## Build APK (debug)
 
+### GitHub Actions (recommended)
+
+Push to **`main`**. The workflow builds a debug APK, publishes it to GitHub Releases, and updates the GPS page QR download URL in D1.
+
+Bump `versionCode` / `versionName` in `app/build.gradle.kts` before pushing when you want a new installable version.
+
+### Local build (Android Studio)
+
 ```bash
 ./gradlew :app:assembleDebug
 ```
@@ -67,7 +75,7 @@ APK output:
 app/build/outputs/apk/debug/app-debug.apk
 ```
 
-After you host that APK at a public HTTPS URL, set `android_app_download_url` in D1 so the web GPS page QR code works.
+The app toolbar shows the installed version (`versionName` / `versionCode`). Match that against the **Current APK** label on `/gps.html`.
 
 ## Overlays tab (Phase 8)
 

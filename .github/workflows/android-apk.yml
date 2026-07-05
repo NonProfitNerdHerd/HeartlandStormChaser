@@ -1,0 +1,88 @@
+name: Build Android APK
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: android-apk-main
+  cancel-in-progress: true
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Read app version
+        id: version
+        working-directory: android-gps
+        run: |
+          VERSION_NAME=$(grep 'versionName' app/build.gradle.kts | head -1 | sed -E 's/.*"([^"]+)".*/\1/')
+          VERSION_CODE=$(grep 'versionCode' app/build.gradle.kts | head -1 | awk '{print $3}')
+          echo "name=${VERSION_NAME}" >> "$GITHUB_OUTPUT"
+          echo "code=${VERSION_CODE}" >> "$GITHUB_OUTPUT"
+
+      - name: Bootstrap Gradle wrapper
+        working-directory: android-gps
+        run: |
+          curl -fsSL "https://services.gradle.org/distributions/gradle-8.7-bin.zip" -o /tmp/gradle.zip
+          unzip -q /tmp/gradle.zip -d /tmp
+          /tmp/gradle-8.7/bin/gradle wrapper --gradle-version 8.7
+
+      - name: Build debug APK
+        working-directory: android-gps
+        run: ./gradlew :app:assembleDebug --no-daemon --stacktrace
+
+      - name: Prepare release asset
+        run: |
+          APK_NAME="heartland-gps-v${{ steps.version.outputs.name }}-debug.apk"
+          cp android-gps/app/build/outputs/apk/debug/app-debug.apk "$APK_NAME"
+          echo "APK_NAME=$APK_NAME" >> "$GITHUB_ENV"
+          echo "RELEASE_TAG=android-v${{ steps.version.outputs.name }}-b${{ github.run_number }}" >> "$GITHUB_ENV"
+
+      - name: Publish GitHub Release
+        id: release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ env.RELEASE_TAG }}
+          name: Heartland GPS v${{ steps.version.outputs.name }} (build ${{ github.run_number }})
+          body: |
+            Debug APK built from commit ${{ github.sha }} on branch `${{ github.ref_name }}`.
+
+            - **Version name:** ${{ steps.version.outputs.name }}
+            - **Version code:** ${{ steps.version.outputs.code }}
+            - **Install:** scan the QR code on `/gps.html` after D1 settings sync completes.
+          files: ${{ env.APK_NAME }}
+          make_latest: true
+
+      - name: Install Wrangler
+        if: success()
+        run: npm ci
+
+      - name: Update GPS page download settings in D1
+        if: success()
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+          ANDROID_DOWNLOAD_URL: https://github.com/${{ github.repository }}/releases/download/${{ env.RELEASE_TAG }}/${{ env.APK_NAME }}
+          ANDROID_VERSION_NAME: ${{ steps.version.outputs.name }}
+          ANDROID_VERSION_CODE: ${{ steps.version.outputs.code }}
+          ANDROID_BUILT_AT: ${{ github.run_id }}
+        run: node .github/scripts/update-android-overlay-settings.mjs

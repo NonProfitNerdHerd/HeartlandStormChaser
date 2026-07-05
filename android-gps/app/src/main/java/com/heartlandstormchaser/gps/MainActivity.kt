@@ -25,6 +25,7 @@ class MainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         setSupportActionBar(binding.mainToolbar)
+        supportActionBar?.subtitle = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
         binding.mainPager.adapter = MainPagerAdapter(this)
         TabLayoutMediator(binding.mainTabs, binding.mainPager) { tab, position ->

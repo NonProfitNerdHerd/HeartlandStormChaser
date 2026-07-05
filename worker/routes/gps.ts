@@ -96,6 +96,28 @@ async function getLatestLocation(
     .first<GpsLatestLocationRow>();
 }
 
+async function readOverlaySettingsByKeys(
+  env: Env,
+  keys: string[],
+): Promise<Record<string, string>> {
+  if (keys.length === 0) {
+    return {};
+  }
+
+  const placeholders = keys.map(() => "?").join(", ");
+  const { results } = await env.DB.prepare(
+    `SELECT key, value FROM overlay_settings WHERE key IN (${placeholders})`,
+  )
+    .bind(...keys)
+    .all<{ key: string; value: string }>();
+
+  const settings: Record<string, string> = {};
+  for (const row of results ?? []) {
+    settings[row.key] = row.value?.trim() ?? "";
+  }
+  return settings;
+}
+
 async function handleGpsHealth(env: Env): Promise<Response> {
   const counts = await env.DB.batch([
     env.DB.prepare(`SELECT COUNT(*) AS count FROM gps_devices`),
@@ -109,18 +131,30 @@ async function handleGpsHealth(env: Env): Promise<Response> {
   const readCount = (index: number) =>
     (counts[index].results?.[0] as { count: number } | undefined)?.count ?? 0;
 
-  const downloadSetting = await env.DB.prepare(
-    `SELECT value FROM overlay_settings WHERE key = ?`,
-  )
-    .bind("android_app_download_url")
-    .first<{ value: string }>();
+  const androidSettings = await readOverlaySettingsByKeys(env, [
+    "android_app_download_url",
+    "android_app_version_name",
+    "android_app_version_code",
+    "android_app_built_at",
+  ]);
+
+  const downloadUrl = androidSettings.android_app_download_url || null;
+  const versionName = androidSettings.android_app_version_name || null;
+  const versionCodeRaw = androidSettings.android_app_version_code || null;
+  const versionCode = versionCodeRaw ? Number.parseInt(versionCodeRaw, 10) : null;
 
   return json({
     ok: true,
     service: "gps",
     pairing_configured:
       typeof env.GPS_PAIRING_PIN === "string" && env.GPS_PAIRING_PIN.trim().length > 0,
-    android_app_download_url: downloadSetting?.value?.trim() || null,
+    android_app_download_url: downloadUrl,
+    android_app: {
+      download_url: downloadUrl,
+      version_name: versionName,
+      version_code: Number.isFinite(versionCode) ? versionCode : null,
+      built_at: androidSettings.android_app_built_at || null,
+    },
     counts: {
       devices: readCount(0),
       latest_locations: readCount(1),

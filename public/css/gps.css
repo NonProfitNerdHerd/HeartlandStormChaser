@@ -190,6 +190,34 @@
   gap: 0.75rem;
 }
 
+.gps-android__version {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.75rem 0.875rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: rgb(56 189 248 / 0.08);
+}
+
+.gps-android__version-label {
+  font-size: 0.6875rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--color-text-muted);
+}
+
+.gps-android__version-value {
+  font-size: 1.125rem;
+  color: var(--color-accent);
+}
+
+.gps-android__version-built {
+  font-size: 0.75rem;
+  color: var(--color-text-muted);
+}
+
 .gps-android__qr {
   width: 10rem;
   height: 10rem;
