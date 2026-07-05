@@ -1,0 +1,116 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="HeartlandStormChaser dashboard — map and alert status overview"
+    />
+    <title>Dashboard · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/pages.css" />
+  </head>
+  <body data-page="dashboard">
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-logo" href="/">HeartlandStormChaser</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-link" href="/" data-nav="home">Home</a>
+          <a class="nav-link" href="/dashboard.html" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/settings.html" data-nav="settings">Settings</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-main">
+      <header class="page-header">
+        <h1>Operations dashboard</h1>
+        <p class="page-header__lead">
+          Placeholder layout for chase map and multi-layer alert monitoring. Live data
+          feeds connect in later phases.
+        </p>
+      </header>
+
+      <section class="map-placeholder" aria-label="Map placeholder">
+        <div class="map-placeholder__inner">
+          <span class="map-placeholder__label">Map area</span>
+          <p class="map-placeholder__text">
+            Interactive chase map will render here — GPS tracks, radar overlays, and
+            alert geometries.
+          </p>
+          <p class="map-placeholder__hint">Phase 2+ · Not connected yet</p>
+        </div>
+      </section>
+
+      <h2 class="dashboard-section-title">Status overview</h2>
+      <div class="dashboard-status-grid">
+        <article class="status-card" id="card-gps">
+          <div class="status-card__header">
+            <h3 class="status-card__title">GPS status</h3>
+            <span class="badge badge--muted" data-badge>Offline</span>
+          </div>
+          <p class="status-card__message" data-message>No devices connected</p>
+        </article>
+
+        <article class="status-card" id="card-weather">
+          <div class="status-card__header">
+            <h3 class="status-card__title">Weather alerts</h3>
+            <span class="badge badge--muted" data-badge>Idle</span>
+          </div>
+          <p class="status-card__message" data-message>
+            NWS feed not connected. Alert layer placeholder only.
+          </p>
+        </article>
+
+        <article class="status-card" id="card-public-safety">
+          <div class="status-card__header">
+            <h3 class="status-card__title">Public safety alerts</h3>
+            <span class="badge badge--muted" data-badge>Idle</span>
+          </div>
+          <p class="status-card__message" data-message>
+            Feed not configured. Layer will monitor public safety sources.
+          </p>
+        </article>
+
+        <article class="status-card" id="card-infrastructure">
+          <div class="status-card__header">
+            <h3 class="status-card__title">Infrastructure alerts</h3>
+            <span class="badge badge--muted" data-badge>Idle</span>
+          </div>
+          <p class="status-card__message" data-message>
+            Feed not configured. Power, telecom, and transport alerts planned.
+          </p>
+        </article>
+
+        <article class="status-card" id="card-cyber">
+          <div class="status-card__header">
+            <h3 class="status-card__title">Cyber alerts</h3>
+            <span class="badge badge--muted" data-badge>Idle</span>
+          </div>
+          <p class="status-card__message" data-message>
+            Feed not configured. Cyber threat monitoring placeholder.
+          </p>
+        </article>
+
+        <article class="status-card" id="card-system">
+          <div class="status-card__header">
+            <h3 class="status-card__title">System status</h3>
+            <span class="badge badge--muted" id="system-badge" data-badge>Checking…</span>
+          </div>
+          <p class="status-card__message" id="system-message" data-message>
+            Checking Worker API…
+          </p>
+        </article>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>HeartlandStormChaser · Phase 1 foundation</p>
+    </footer>
+
+    <script src="/js/nav.js"></script>
+    <script src="/js/dashboard.js"></script>
+  </body>
+</html>

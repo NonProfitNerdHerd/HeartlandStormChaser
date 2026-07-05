@@ -1,8 +1,17 @@
 {
   "$schema": "./node_modules/wrangler/config-schema.json",
   "name": "heartland-storm-chaser",
+  "main": "worker/index.ts",
   "compatibility_date": "2026-07-03",
   "observability": {
     "enabled": true
+  },
+  "vars": {
+    "ENVIRONMENT": "development"
+  },
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
   }
 }
