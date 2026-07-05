@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="ChasersStreams — manage and view storm chaser YouTube livestreams in quad view"
+    />
+    <title>Chasers Streams · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/chasers-streams.css" />
+  </head>
+  <body data-page="chasers-streams">
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-logo" href="/">HeartlandStormChaser</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-link" href="/" data-nav="home">Home</a>
+          <a class="nav-link" href="/dashboard.html" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams"
+            >Chasers Streams</a
+          >
+          <a class="nav-link" href="/settings.html" data-nav="settings">Settings</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-main site-main--wide">
+      <header class="page-header">
+        <h1>Chasers Streams</h1>
+        <p class="page-header__lead">
+          Manage storm chaser YouTube livestreams and watch up to four feeds in a quad view.
+        </p>
+      </header>
+
+      <div class="chasers-layout">
+        <aside class="stream-admin" aria-label="Stream admin">
+          <div class="stream-admin__panel">
+            <h2 class="stream-admin__title" id="form-title">Add stream</h2>
+            <form id="stream-form" class="stream-form">
+              <input type="hidden" id="source-id" name="source_id" value="" />
+              <div class="form-field">
+                <label for="display-name">Display name</label>
+                <input
+                  id="display-name"
+                  name="display_name"
+                  type="text"
+                  required
+                  placeholder="e.g. Ike Chase Cam"
+                />
+              </div>
+              <div class="form-field">
+                <label for="youtube-url">YouTube URL</label>
+                <input
+                  id="youtube-url"
+                  name="youtube_url"
+                  type="url"
+                  required
+                  placeholder="https://youtube.com/watch?v=..."
+                />
+              </div>
+              <div class="form-field">
+                <label for="notes">Notes</label>
+                <textarea id="notes" name="notes" placeholder="Optional notes"></textarea>
+              </div>
+              <div class="form-field form-field--checkbox">
+                <input id="enabled" name="enabled" type="checkbox" checked />
+                <label for="enabled">Enabled</label>
+              </div>
+              <p id="form-message" class="form-message" role="status" hidden></p>
+              <div class="form-actions">
+                <button type="submit" class="btn btn--primary" id="form-submit">Save stream</button>
+                <button type="button" class="btn btn--secondary" id="form-cancel" hidden>
+                  Cancel edit
+                </button>
+              </div>
+            </form>
+          </div>
+
+          <div class="stream-admin__panel stream-list-panel">
+            <h2 class="stream-admin__title">All streamers</h2>
+            <div id="stream-list" class="stream-list">
+              <p class="stream-list__empty">Loading streamers…</p>
+            </div>
+          </div>
+        </aside>
+
+        <section class="quad-view" aria-label="Quad view">
+          <h2 class="quad-view__title">Quad view</h2>
+          <div id="quad-grid" class="quad-grid"></div>
+        </section>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>HeartlandStormChaser · Chasers Streams</p>
+    </footer>
+
+    <script src="/js/nav.js"></script>
+    <script src="/js/chasers-streams.js"></script>
+  </body>
+</html>

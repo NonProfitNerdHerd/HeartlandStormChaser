@@ -1,3 +1,4 @@
+import { handleChasersStreams } from "./routes/chasers-streams";
 import { handleDbTest } from "./routes/db-test";
 import { handleHealth } from "./routes/health";
 
@@ -17,6 +18,10 @@ export default {
 
     if (url.pathname === "/api/db-test" && request.method === "GET") {
       return handleDbTest(request, env);
+    }
+
+    if (url.pathname.startsWith("/api/chasers-streams")) {
+      return handleChasersStreams(request, env);
     }
 
     return env.ASSETS.fetch(request);
