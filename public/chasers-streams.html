@@ -31,9 +31,24 @@
       <header class="page-header">
         <h1>Chasers Streams</h1>
         <p class="page-header__lead">
-          Manage storm chaser YouTube livestreams and watch up to four feeds in a quad view.
+          Add chasers by YouTube channel ID, refresh live status once (cached for all devices), and
+          watch up to four live feeds in quad view.
         </p>
       </header>
+
+      <div class="chasers-toolbar">
+        <div class="chasers-toolbar__status">
+          <span id="refresh-status" class="chasers-toolbar__text">Live status not checked yet.</span>
+        </div>
+        <div class="chasers-toolbar__actions">
+          <button type="button" class="btn btn--primary" id="refresh-live-btn">
+            Refresh live status
+          </button>
+          <button type="button" class="btn btn--secondary" id="refresh-live-force-btn" title="Bypass 2-minute cache">
+            Force refresh
+          </button>
+        </div>
+      </div>
 
       <div class="chasers-layout">
         <aside class="stream-admin" aria-label="Stream admin">
@@ -52,14 +67,19 @@
                 />
               </div>
               <div class="form-field">
-                <label for="youtube-url">YouTube URL</label>
+                <label for="channel-id">YouTube channel ID</label>
                 <input
-                  id="youtube-url"
-                  name="youtube_url"
-                  type="url"
+                  id="channel-id"
+                  name="channel_id"
+                  type="text"
                   required
-                  placeholder="https://youtube.com/watch?v=..."
+                  placeholder="UCqSk-ojoH2rgAuYadPLJgJA"
+                  pattern="UC[\w-]{22}"
+                  spellcheck="false"
                 />
+                <small class="form-hint"
+                  >Paste the UC… ID from the channel page (starts with UC, 24 characters).</small
+                >
               </div>
               <div class="form-field">
                 <label for="notes">Notes</label>

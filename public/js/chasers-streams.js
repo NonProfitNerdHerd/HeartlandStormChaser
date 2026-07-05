@@ -4,8 +4,10 @@
   var state = {
     sources: [],
     slots: [],
+    cache: null,
     editingId: null,
     focusedSlot: null,
+    refreshing: false,
   };
 
   var form = document.getElementById("stream-form");
@@ -16,6 +18,9 @@
   var sourceIdInput = document.getElementById("source-id");
   var streamList = document.getElementById("stream-list");
   var quadGrid = document.getElementById("quad-grid");
+  var refreshStatus = document.getElementById("refresh-status");
+  var refreshLiveBtn = document.getElementById("refresh-live-btn");
+  var refreshForceBtn = document.getElementById("refresh-live-force-btn");
 
   function showFormMessage(text, type) {
     formMessage.hidden = false;
@@ -38,10 +43,42 @@
     return data;
   }
 
+  function formatCheckedAt(isoOrSql) {
+    if (!isoOrSql) return "never";
+    var d = new Date(isoOrSql.replace(" ", "T") + (isoOrSql.includes("T") ? "" : "Z"));
+    if (Number.isNaN(d.getTime())) return isoOrSql;
+    return d.toLocaleString();
+  }
+
+  function updateRefreshStatus(extra) {
+    var cache = state.cache;
+    if (!cache || !cache.last_refreshed_at) {
+      refreshStatus.textContent =
+        extra || "Live status not checked yet. Click Refresh live status.";
+      return;
+    }
+
+    var age =
+      cache.cache_age_seconds != null
+        ? cache.cache_age_seconds
+        : Math.floor((Date.now() - Date.parse(cache.last_refreshed_at)) / 1000);
+
+    var liveCount = state.sources.filter(function (s) {
+      return s.enabled && s.is_live;
+    }).length;
+
+    refreshStatus.textContent =
+      (extra ? extra + " · " : "") +
+      liveCount +
+      " live · Last checked " +
+      formatCheckedAt(cache.last_refreshed_at) +
+      (age >= 0 ? " (" + age + "s ago)" : "");
+  }
+
   function getFormData() {
     return {
       display_name: document.getElementById("display-name").value.trim(),
-      youtube_url: document.getElementById("youtube-url").value.trim(),
+      channel_id: document.getElementById("channel-id").value.trim(),
       notes: document.getElementById("notes").value.trim(),
       enabled: document.getElementById("enabled").checked,
     };
@@ -62,7 +99,7 @@
     state.editingId = source.id;
     sourceIdInput.value = source.id;
     document.getElementById("display-name").value = source.display_name;
-    document.getElementById("youtube-url").value = source.youtube_url;
+    document.getElementById("channel-id").value = source.channel_id || "";
     document.getElementById("notes").value = source.notes || "";
     document.getElementById("enabled").checked = source.enabled;
     formTitle.textContent = "Edit stream";
@@ -82,13 +119,14 @@
     var html = '<option value="">— Unassigned —</option>';
     enabledSources().forEach(function (source) {
       var selected = source.id === selectedId ? " selected" : "";
+      var liveTag = source.is_live ? " ● LIVE" : "";
       html +=
         '<option value="' +
         escapeAttr(source.id) +
         '"' +
         selected +
         ">" +
-        escapeHtml(source.display_name) +
+        escapeHtml(source.display_name + liveTag) +
         "</option>";
     });
     return html;
@@ -104,6 +142,16 @@
     return String(text).replace(/"/g, "&quot;");
   }
 
+  function liveBadge(source) {
+    if (!source.enabled) {
+      return '<span class="badge badge--muted">Disabled</span>';
+    }
+    if (source.is_live) {
+      return '<span class="badge badge--live">Live</span>';
+    }
+    return '<span class="badge badge--muted">Offline</span>';
+  }
+
   function renderStreamList() {
     if (state.sources.length === 0) {
       streamList.innerHTML =
@@ -113,11 +161,16 @@
 
     streamList.innerHTML = state.sources
       .map(function (source) {
-        var badgeClass = source.enabled ? "badge--success" : "badge--muted";
-        var badgeText = source.enabled ? "Enabled" : "Disabled";
         var itemClass = source.enabled ? "stream-item" : "stream-item stream-item--disabled";
         var notes = source.notes
           ? '<p class="stream-item__notes">' + escapeHtml(source.notes) + "</p>"
+          : "";
+        var liveTitle =
+          source.is_live && source.live_title
+            ? '<p class="stream-item__live-title">' + escapeHtml(source.live_title) + "</p>"
+            : "";
+        var channel = source.channel_id
+          ? '<p class="stream-item__channel">' + escapeHtml(source.channel_id) + "</p>"
           : "";
 
         return (
@@ -130,20 +183,18 @@
           '<h3 class="stream-item__name">' +
           escapeHtml(source.display_name) +
           "</h3>" +
-          '<span class="badge ' +
-          badgeClass +
-          '">' +
-          badgeText +
-          "</span>" +
+          liveBadge(source) +
           "</div>" +
+          channel +
+          liveTitle +
           notes +
           '<div class="stream-item__actions">' +
           '<select class="stream-item__assign" data-action="assign" aria-label="Assign to slot">' +
           '<option value="">Assign to slot…</option>' +
-          "<option value=\"1\">Slot 1</option>" +
-          "<option value=\"2\">Slot 2</option>" +
-          "<option value=\"3\">Slot 3</option>" +
-          "<option value=\"4\">Slot 4</option>" +
+          '<option value="1">Slot 1</option>' +
+          '<option value="2">Slot 2</option>' +
+          '<option value="3">Slot 3</option>' +
+          '<option value="4">Slot 4</option>' +
           "</select>" +
           '<button type="button" class="btn btn--secondary btn--small" data-action="edit">Edit</button>' +
           '<button type="button" class="btn btn--secondary btn--small" data-action="toggle">' +
@@ -163,13 +214,20 @@
         var source = slot.source;
         var focused = state.focusedSlot === slot.slot_number ? " quad-slot--focused" : "";
         var name = source ? escapeHtml(source.display_name) : "Empty";
-        var disabledNote =
-          source && !source.enabled
-            ? ' <span class="badge badge--warning">Disabled</span>'
-            : "";
+        var statusBadge = "";
+
+        if (source) {
+          if (!source.enabled) {
+            statusBadge = ' <span class="badge badge--warning">Disabled</span>';
+          } else if (source.is_live) {
+            statusBadge = ' <span class="badge badge--live">Live</span>';
+          } else {
+            statusBadge = ' <span class="badge badge--muted">Offline</span>';
+          }
+        }
 
         var body = "";
-        if (source && source.embed_url) {
+        if (source && source.is_live && source.embed_url) {
           body =
             '<div class="quad-slot__video">' +
             '<iframe src="' +
@@ -178,9 +236,14 @@
             escapeAttr(source.display_name) +
             '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>' +
             "</div>";
+        } else if (source) {
+          var offlineMsg = source.enabled
+            ? escapeHtml(source.display_name) + " is offline.<br />Refresh live status to check again."
+            : escapeHtml(source.display_name) + " is disabled.";
+          body = '<div class="quad-slot__placeholder">' + offlineMsg + "</div>";
         } else {
           body =
-            '<div class="quad-slot__placeholder">No stream assigned.<br />Pick a streamer below or from the sidebar.</div>';
+            '<div class="quad-slot__placeholder">No stream assigned.<br />Pick a streamer from the sidebar.</div>';
         }
 
         return (
@@ -194,7 +257,7 @@
           slot.slot_number +
           '</p><p class="quad-slot__name">' +
           name +
-          disabledNote +
+          statusBadge +
           "</p></div>" +
           '<div class="quad-slot__controls">' +
           '<button type="button" class="btn btn--secondary btn--small" data-action="focus" title="Focus">Focus</button>' +
@@ -218,7 +281,9 @@
   async function loadSources() {
     var data = await api(API + "/sources");
     state.sources = data.sources || [];
+    state.cache = data.cache || null;
     renderStreamList();
+    updateRefreshStatus();
   }
 
   async function loadSlots() {
@@ -230,6 +295,45 @@
   async function refreshAll() {
     await loadSources();
     await loadSlots();
+  }
+
+  async function refreshLiveStatus(force) {
+    if (state.refreshing) return;
+    state.refreshing = true;
+    refreshLiveBtn.disabled = true;
+    refreshForceBtn.disabled = true;
+    refreshStatus.textContent = "Checking YouTube live status…";
+
+    try {
+      var data = await api(API + "/refresh-live", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ force: force === true }),
+      });
+
+      state.sources = data.sources || state.sources;
+      state.cache = data.cache || {
+        last_refreshed_at: data.last_refreshed_at,
+        cache_age_seconds: 0,
+        cache_ttl_seconds: 120,
+      };
+
+      var msg = data.skipped_api
+        ? "Using cached status (all tablets share this)"
+        : data.refreshed
+          ? "Refreshed from YouTube"
+          : "Status updated";
+
+      renderStreamList();
+      await loadSlots();
+      updateRefreshStatus(msg);
+    } catch (error) {
+      refreshStatus.textContent = "Refresh failed: " + error.message;
+    } finally {
+      state.refreshing = false;
+      refreshLiveBtn.disabled = false;
+      refreshForceBtn.disabled = false;
+    }
   }
 
   async function saveSource(event) {
@@ -278,7 +382,7 @@
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
         display_name: source.display_name,
-        youtube_url: source.youtube_url,
+        channel_id: source.channel_id,
         notes: source.notes,
         enabled: !source.enabled,
       }),
@@ -402,11 +506,16 @@
 
   form.addEventListener("submit", saveSource);
   formCancel.addEventListener("click", resetForm);
+  refreshLiveBtn.addEventListener("click", function () {
+    refreshLiveStatus(false);
+  });
+  refreshForceBtn.addEventListener("click", function () {
+    refreshLiveStatus(true);
+  });
 
   refreshAll().catch(function (err) {
     streamList.innerHTML =
       '<p class="stream-list__empty">Failed to load: ' + escapeHtml(err.message) + "</p>";
-    quadGrid.innerHTML =
-      '<p class="stream-list__empty">Failed to load quad view.</p>';
+    quadGrid.innerHTML = '<p class="stream-list__empty">Failed to load quad view.</p>';
   });
 })();

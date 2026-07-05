@@ -6,6 +6,7 @@ export interface Env {
   ASSETS: Fetcher;
   DB: D1Database;
   ENVIRONMENT?: string;
+  YOUTUBE_API_KEY?: string;
 }
 
 export default {

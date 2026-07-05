@@ -1,71 +1,67 @@
-export type YouTubeParseResult =
-  | { ok: true; videoId: string; embedUrl: string }
+export type ChannelParseResult =
+  | { ok: true; channelId: string }
   | { ok: false; error: string };
 
-const EMBED_BASE = "https://www.youtube.com/embed/";
+const CHANNEL_ID_PATTERN = /^UC[\w-]{22}$/;
 
-function buildEmbedUrl(videoId: string): string {
-  return `${EMBED_BASE}${videoId}`;
+export function isValidChannelId(value: string): boolean {
+  return CHANNEL_ID_PATTERN.test(value);
 }
 
-function extractVideoId(hostname: string, pathname: string, searchParams: URLSearchParams): string | null {
-  const host = hostname.replace(/^www\./, "");
+export function buildChannelPageUrl(channelId: string): string {
+  return `https://www.youtube.com/channel/${channelId}`;
+}
 
-  if (host === "youtu.be") {
-    const id = pathname.split("/").filter(Boolean)[0];
-    return id && /^[\w-]{11}$/.test(id) ? id : null;
-  }
+export function buildLiveVideoEmbedUrl(videoId: string): string {
+  return `https://www.youtube.com/embed/${videoId}`;
+}
 
-  if (host === "youtube.com" || host === "m.youtube.com" || host === "music.youtube.com") {
-    const v = searchParams.get("v");
-    if (v && /^[\w-]{11}$/.test(v)) {
-      return v;
-    }
+export function buildChannelLiveEmbedUrl(channelId: string): string {
+  return `https://www.youtube.com/embed/live_stream?channel=${channelId}`;
+}
 
-    const parts = pathname.split("/").filter(Boolean);
+function extractChannelIdFromPath(pathname: string): string | null {
+  const parts = pathname.split("/").filter(Boolean);
 
-    if (parts[0] === "embed" || parts[0] === "live" || parts[0] === "v") {
-      const id = parts[1];
-      return id && /^[\w-]{11}$/.test(id) ? id : null;
-    }
-
-    if (parts[0] === "shorts" && parts[1] && /^[\w-]{11}$/.test(parts[1])) {
-      return parts[1];
-    }
+  const channelIndex = parts.indexOf("channel");
+  if (channelIndex >= 0 && parts[channelIndex + 1]) {
+    const id = parts[channelIndex + 1];
+    return isValidChannelId(id) ? id : null;
   }
 
   return null;
 }
 
-export function parseYouTubeUrl(rawUrl: string): YouTubeParseResult {
-  const trimmed = rawUrl.trim();
+export function parseChannelId(rawInput: string): ChannelParseResult {
+  const trimmed = rawInput.trim();
   if (!trimmed) {
-    return { ok: false, error: "YouTube URL is required." };
+    return { ok: false, error: "Channel ID is required." };
   }
 
-  let parsed: URL;
-  try {
-    parsed = new URL(trimmed);
-  } catch {
-    return { ok: false, error: "Invalid URL format." };
+  if (isValidChannelId(trimmed)) {
+    return { ok: true, channelId: trimmed };
   }
 
-  if (parsed.protocol !== "http:" && parsed.protocol !== "https:") {
-    return { ok: false, error: "URL must use http or https." };
-  }
+  if (trimmed.startsWith("http://") || trimmed.startsWith("https://")) {
+    try {
+      const parsed = new URL(trimmed);
+      const fromPath = extractChannelIdFromPath(parsed.pathname);
+      if (fromPath) {
+        return { ok: true, channelId: fromPath };
+      }
 
-  const videoId = extractVideoId(parsed.hostname, parsed.pathname, parsed.searchParams);
-  if (!videoId) {
-    return {
-      ok: false,
-      error:
-        "Could not extract a YouTube video ID. Use watch, youtu.be, live, or embed URLs.",
-    };
+      return {
+        ok: false,
+        error:
+          "Could not find a channel ID in that URL. Paste the UC… ID or a /channel/UC… link.",
+      };
+    } catch {
+      return { ok: false, error: "Invalid URL format." };
+    }
   }
 
   return {
-    ok: true,
-    videoId,
-    embedUrl: buildEmbedUrl(videoId),
+    ok: false,
+    error: "Channel ID must start with UC and be 24 characters (e.g. UCqSk-ojoH2rgAuYadPLJgJA).",
   };
 }
