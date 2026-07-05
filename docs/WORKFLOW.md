@@ -2,7 +2,7 @@
 
 This document explains **how to work on this project yourself** — local development, database migrations, Git, GitHub, and Cloudflare deployment.
 
-Phase 1 goal: a clean foundation (static pages, Worker API, D1 schema). No Android GPS, no live alert feeds, no auth yet.
+Phase 1 established the foundation (static pages, Worker API, D1 schema). Later phases added GPS, weather, OBS overlays, Chasers Streams, and the Android app. See the root [README.md](../README.md) for the current feature list.
 
 ---
 
@@ -232,20 +232,18 @@ Write what changed and why:
 
 Avoid vague messages like `update` or `fix stuff`.
 
-### Branches and pull requests
+### Branches
 
-This repo uses:
+This repo uses a single active branch:
 
-- **`main`** — active development branch
-- **`master`** — integration / review base for draft PRs
+- **`main`** — pre-production development and deployment branch
 
-To open a draft PR (after `gh auth login`):
+Work directly on `main` unless you intentionally create a short-lived feature branch.
 
 ```powershell
-gh pr create --draft --base master --head main --title "Your title" --body "Summary of changes"
+git checkout main
+git pull origin main
 ```
-
-Or use the GitHub web UI: **Compare & pull request** after pushing.
 
 ### What not to commit
 
@@ -395,13 +393,15 @@ git push origin main
 - [x] Database test API (`GET /api/db-test`)
 - [x] Workflow documentation (this file)
 
-## Not in Phase 1 (coming later)
+## Not built yet
 
-- Android GPS ingestion
-- Live weather / alert feeds
+- Web Overlays settings page
+- OBS ticker overlay UI
+- Live alert feeds beyond NWS platform weather
 - Interactive map
 - Authentication
-- Supabase / Vercel / Next.js (intentionally excluded)
+
+See the root [README.md](../README.md) for the full current vs. planned feature list.
 
 ---
 
