@@ -5,6 +5,7 @@ import {
   hashToken,
   verifyPairingPin,
 } from "../lib/gps-auth";
+import { routeErrorResponse } from "../lib/db-errors";
 import {
   getGpsConnectionStatus,
   GPS_HISTORY_INTERVAL_SECONDS,
@@ -117,7 +118,8 @@ async function handleGpsHealth(env: Env): Promise<Response> {
   return json({
     ok: true,
     service: "gps",
-    pairing_configured: Boolean(env.GPS_PAIRING_PIN?.trim()),
+    pairing_configured:
+      typeof env.GPS_PAIRING_PIN === "string" && env.GPS_PAIRING_PIN.trim().length > 0,
     android_app_download_url: downloadSetting?.value?.trim() || null,
     counts: {
       devices: readCount(0),
@@ -450,33 +452,37 @@ async function handleSetPlatform(request: Request, env: Env): Promise<Response> 
 }
 
 export async function handleGps(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const { pathname } = url;
-  const { method } = request;
+  try {
+    const url = new URL(request.url);
+    const { pathname } = url;
+    const { method } = request;
 
-  if (pathname === "/api/gps/health" && method === "GET") {
-    return handleGpsHealth(env);
+    if (pathname === "/api/gps/health" && method === "GET") {
+      return handleGpsHealth(env);
+    }
+
+    if (pathname === "/api/gps/pair" && method === "POST") {
+      return handlePair(request, env);
+    }
+
+    if (pathname === "/api/gps/update" && method === "POST") {
+      return handleUpdate(request, env);
+    }
+
+    if (pathname === "/api/gps/devices" && method === "GET") {
+      return handleListDevices(env);
+    }
+
+    if (pathname === "/api/gps/platform" && method === "GET") {
+      return handleGetPlatform(env);
+    }
+
+    if (pathname === "/api/gps/platform" && method === "POST") {
+      return handleSetPlatform(request, env);
+    }
+
+    return errorResponse("Not found", 404);
+  } catch (error) {
+    return routeErrorResponse(error, "GPS API");
   }
-
-  if (pathname === "/api/gps/pair" && method === "POST") {
-    return handlePair(request, env);
-  }
-
-  if (pathname === "/api/gps/update" && method === "POST") {
-    return handleUpdate(request, env);
-  }
-
-  if (pathname === "/api/gps/devices" && method === "GET") {
-    return handleListDevices(env);
-  }
-
-  if (pathname === "/api/gps/platform" && method === "GET") {
-    return handleGetPlatform(env);
-  }
-
-  if (pathname === "/api/gps/platform" && method === "POST") {
-    return handleSetPlatform(request, env);
-  }
-
-  return errorResponse("Not found", 404);
 }

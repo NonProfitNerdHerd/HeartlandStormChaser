@@ -1,3 +1,4 @@
+import { routeErrorResponse } from "../lib/db-errors";
 import { getGpsConnectionStatus } from "../lib/gps-status";
 import { getWeatherForCoordinates } from "../lib/nws-weather";
 import type { Env } from "../index";
@@ -142,13 +143,17 @@ async function handleGpsWeatherData(env: Env): Promise<Response> {
 }
 
 export async function handleOverlays(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const { pathname } = url;
-  const { method } = request;
+  try {
+    const url = new URL(request.url);
+    const { pathname } = url;
+    const { method } = request;
 
-  if (pathname === "/api/overlays/gps-weather-data" && method === "GET") {
-    return handleGpsWeatherData(env);
+    if (pathname === "/api/overlays/gps-weather-data" && method === "GET") {
+      return handleGpsWeatherData(env);
+    }
+
+    return errorResponse("Not found", 404);
+  } catch (error) {
+    return routeErrorResponse(error, "Overlays API");
   }
-
-  return errorResponse("Not found", 404);
 }

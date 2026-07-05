@@ -1,3 +1,4 @@
+import { routeErrorResponse } from "../lib/db-errors";
 import { getWeatherForCoordinates } from "../lib/nws-weather";
 import type { Env } from "../index";
 
@@ -77,17 +78,17 @@ async function handleCurrentWeather(request: Request, env: Env): Promise<Respons
 }
 
 async function handlePlatformWeather(env: Env): Promise<Response> {
-  const platform = await getPlatformCoordinates(env);
-
-  if (!platform) {
-    return json({
-      ok: true,
-      weather: null,
-      message: "No platform GPS source with a known location",
-    });
-  }
-
   try {
+    const platform = await getPlatformCoordinates(env);
+
+    if (!platform) {
+      return json({
+        ok: true,
+        weather: null,
+        message: "No platform GPS source with a known location",
+      });
+    }
+
     const weather = await getWeatherForCoordinates(
       env,
       platform.latitude,
@@ -106,22 +107,29 @@ async function handlePlatformWeather(env: Env): Promise<Response> {
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Weather fetch failed";
+    if (message.includes("no such table") || message.includes("D1_ERROR")) {
+      return routeErrorResponse(error, "Weather API");
+    }
     return errorResponse(message, 502);
   }
 }
 
 export async function handleWeather(request: Request, env: Env): Promise<Response> {
-  const url = new URL(request.url);
-  const { pathname } = url;
-  const { method } = request;
+  try {
+    const url = new URL(request.url);
+    const { pathname } = url;
+    const { method } = request;
 
-  if (pathname === "/api/weather/current" && method === "GET") {
-    return handleCurrentWeather(request, env);
+    if (pathname === "/api/weather/current" && method === "GET") {
+      return handleCurrentWeather(request, env);
+    }
+
+    if (pathname === "/api/weather/platform" && method === "GET") {
+      return handlePlatformWeather(env);
+    }
+
+    return errorResponse("Not found", 404);
+  } catch (error) {
+    return routeErrorResponse(error, "Weather API");
   }
-
-  if (pathname === "/api/weather/platform" && method === "GET") {
-    return handlePlatformWeather(env);
-  }
-
-  return errorResponse("Not found", 404);
 }
