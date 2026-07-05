@@ -20,6 +20,118 @@ async function readOverlaySetting(env: Env, key: string): Promise<string> {
   return row?.value?.trim() ?? "";
 }
 
+async function writeOverlaySetting(env: Env, key: string, value: string): Promise<void> {
+  const timestamp = new Date().toISOString();
+  await env.DB.prepare(
+    `INSERT INTO overlay_settings (key, value, updated_at)
+     VALUES (?, ?, ?)
+     ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+  )
+    .bind(key, value, timestamp)
+    .run();
+}
+
+const OVERLAY_SETTING_KEYS = [
+  "overlay_target_city",
+  "overlay_target_state",
+  "overlay_ticker_text",
+  "android_app_download_url",
+] as const;
+
+const WRITABLE_OVERLAY_KEYS = [
+  "overlay_target_city",
+  "overlay_target_state",
+  "overlay_ticker_text",
+] as const;
+
+async function readOverlaySettings(env: Env): Promise<Record<string, string>> {
+  const settings: Record<string, string> = {};
+  for (const key of OVERLAY_SETTING_KEYS) {
+    settings[key] = await readOverlaySetting(env, key);
+  }
+  return settings;
+}
+
+async function handleGetOverlaySettings(env: Env): Promise<Response> {
+  const settings = await readOverlaySettings(env);
+  const latestUpdated = await env.DB.prepare(
+    `SELECT MAX(updated_at) AS updated_at FROM overlay_settings
+     WHERE key IN (${OVERLAY_SETTING_KEYS.map(() => "?").join(", ")})`,
+  )
+    .bind(...OVERLAY_SETTING_KEYS)
+    .first<{ updated_at: string | null }>();
+
+  return json({
+    ok: true,
+    settings,
+    updated_at: latestUpdated?.updated_at ?? new Date().toISOString(),
+  });
+}
+
+async function handlePutOverlaySettings(request: Request, env: Env): Promise<Response> {
+  let body: Record<string, unknown>;
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse("Invalid JSON body");
+  }
+
+  const updates: Record<string, string> = {};
+
+  for (const key of WRITABLE_OVERLAY_KEYS) {
+    if (!(key in body)) {
+      continue;
+    }
+    const raw = body[key];
+    if (raw === null) {
+      updates[key] = "";
+      continue;
+    }
+    if (typeof raw !== "string") {
+      return errorResponse(`${key} must be a string`);
+    }
+    updates[key] = raw.trim();
+  }
+
+  if (Object.keys(updates).length === 0) {
+    return errorResponse("No overlay settings provided to update");
+  }
+
+  if ("overlay_target_state" in updates) {
+    const state = updates.overlay_target_state;
+    if (state && !/^[A-Za-z]{2}$/.test(state)) {
+      return errorResponse("overlay_target_state must be a 2-letter state code");
+    }
+    updates.overlay_target_state = state.toUpperCase();
+  }
+
+  if ("overlay_target_city" in updates && updates.overlay_target_city.length > 120) {
+    return errorResponse("overlay_target_city is too long");
+  }
+
+  if ("overlay_ticker_text" in updates && updates.overlay_ticker_text.length > 500) {
+    return errorResponse("overlay_ticker_text is too long");
+  }
+
+  for (const [key, value] of Object.entries(updates)) {
+    await writeOverlaySetting(env, key, value);
+  }
+
+  const settings = await readOverlaySettings(env);
+  const latestUpdated = await env.DB.prepare(
+    `SELECT MAX(updated_at) AS updated_at FROM overlay_settings
+     WHERE key IN (${OVERLAY_SETTING_KEYS.map(() => "?").join(", ")})`,
+  )
+    .bind(...OVERLAY_SETTING_KEYS)
+    .first<{ updated_at: string | null }>();
+
+  return json({
+    ok: true,
+    settings,
+    updated_at: latestUpdated?.updated_at ?? new Date().toISOString(),
+  });
+}
+
 function formatLocationLabel(city: string, state: string): string | null {
   if (city && state) return `${city}, ${state}`;
   if (city) return city;
@@ -147,6 +259,14 @@ export async function handleOverlays(request: Request, env: Env): Promise<Respon
     const url = new URL(request.url);
     const { pathname } = url;
     const { method } = request;
+
+    if (pathname === "/api/overlay/settings" && method === "GET") {
+      return handleGetOverlaySettings(env);
+    }
+
+    if (pathname === "/api/overlay/settings" && method === "PUT") {
+      return handlePutOverlaySettings(request, env);
+    }
 
     if (pathname === "/api/overlays/gps-weather-data" && method === "GET") {
       return handleGpsWeatherData(env);

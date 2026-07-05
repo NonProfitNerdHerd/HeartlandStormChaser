@@ -37,7 +37,7 @@ export default {
       return handleWeather(request, env);
     }
 
-    if (url.pathname.startsWith("/api/overlays")) {
+    if (url.pathname.startsWith("/api/overlay") || url.pathname.startsWith("/api/overlays")) {
       return handleOverlays(request, env);
     }
 
