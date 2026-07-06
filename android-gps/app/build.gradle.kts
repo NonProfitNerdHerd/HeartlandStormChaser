@@ -15,8 +15,8 @@ android {
         applicationId = "com.heartlandstormchaser.gps"
         minSdk = 26
         targetSdk = 34
-        versionCode = 5
-        versionName = "0.4.1"
+        versionCode = 6
+        versionName = "0.5.0"
         buildConfigField("String", "DEFAULT_API_BASE_URL", "\"$gpsApiBaseUrl\"")
     }
 
@@ -52,5 +52,8 @@ dependencies {
     implementation("androidx.viewpager2:viewpager2:1.1.0")
     implementation("com.google.android.gms:play-services-location:21.3.0")
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    implementation("androidx.recyclerview:recyclerview:1.3.2")
+    implementation("androidx.swiperefreshlayout:swiperefreshlayout:1.2.0-rc01")
+    implementation("androidx.coordinatorlayout:coordinatorlayout:1.2.0")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.8.1")
 }

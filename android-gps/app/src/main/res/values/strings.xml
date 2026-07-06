@@ -1,6 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Heartland GPS</string>
+    <string name="tab_warnings">Warnings</string>
     <string name="tab_gps">GPS</string>
     <string name="tab_overlays">Overlays</string>
     <string name="pairing_title">Connect to HeartlandStormChaser</string>
@@ -72,4 +73,26 @@
     <string name="notification_gps_error">GPS error</string>
     <string name="error_location_permission">Location permission is required to broadcast GPS.</string>
     <string name="error_set_platform">Unable to set platform GPS source.</string>
+    <string name="warnings_heading">Active warnings</string>
+    <string name="warnings_loading">Loading warnings…</string>
+    <string name="warnings_empty">No matching warnings within your radius and filters.</string>
+    <string name="warnings_meta">%1$d warnings · %2$d mi radius</string>
+    <string name="warning_distance_miles">%1$.1f mi away</string>
+    <string name="warning_expires_at">Expires: %1$s</string>
+    <string name="warning_detail_meta">%1$s severity · %2$s urgency · %3$.1f mi</string>
+    <string name="warning_detail_instruction">Instruction</string>
+    <string name="warning_detail_office">Issuing office: %1$s\nIssued: %2$s\nExpires: %3$s</string>
+    <string name="action_warning_settings">Settings</string>
+    <string name="action_apply_warning_settings">Apply settings</string>
+    <string name="action_play_sound">Play</string>
+    <string name="warnings_settings_title">Warning settings</string>
+    <string name="warnings_settings_radius">Radius (miles)</string>
+    <string name="warnings_settings_filters">Warning types</string>
+    <string name="warnings_settings_filters_hint">Shared with the website and OBS overlays.</string>
+    <string name="warnings_settings_sounds">Notification sounds</string>
+    <string name="warnings_settings_sounds_hint">Play MP3 alerts on this device when a new watch or warning is issued.</string>
+    <string name="warning_radius_option">%1$d miles</string>
+    <string name="warnings_settings_saved">Warning settings saved.</string>
+    <string name="error_load_warnings">Unable to load warnings.</string>
+    <string name="error_save_warning_settings">Unable to save warning settings.</string>
 </resources>

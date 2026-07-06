@@ -60,6 +60,48 @@ data class OverlaySettingsResult(
     val error: String? = null,
 )
 
+data class WarningAlert(
+    val id: String,
+    val event: String,
+    val severity: String,
+    val urgency: String,
+    val headline: String,
+    val description: String,
+    val instruction: String?,
+    val areaDesc: String,
+    val areaLabel: String,
+    val senderName: String,
+    val sent: String,
+    val effective: String,
+    val expires: String,
+    val ends: String?,
+    val distanceMiles: Double,
+    val color: String,
+)
+
+data class WarningsSettings(
+    val pollIntervalSeconds: Int,
+    val radiusMiles: Int,
+    val eventFilters: Map<String, Boolean>,
+    val fetchedAt: String?,
+    val cachedAlertCount: Int,
+)
+
+data class WarningsSettingsResult(
+    val success: Boolean,
+    val settings: WarningsSettings? = null,
+    val error: String? = null,
+)
+
+data class PlatformWarningsResult(
+    val success: Boolean,
+    val alerts: List<WarningAlert> = emptyList(),
+    val message: String? = null,
+    val fetchedAt: String? = null,
+    val settings: WarningsSettings? = null,
+    val error: String? = null,
+)
+
 class GpsApiClient(
     private val serverUrl: String,
     private val deviceToken: String? = null,
@@ -218,6 +260,112 @@ class GpsApiClient(
         }
     }
 
+    fun fetchWarningsSettings(): WarningsSettingsResult {
+        return getJson("/api/warnings/settings") { json, _ ->
+            parseWarningsSettingsResult(json)
+        }
+    }
+
+    fun updateWarningsSettings(
+        radiusMiles: Int? = null,
+        eventFilters: Map<String, Boolean>? = null,
+        pollIntervalSeconds: Int? = null,
+    ): WarningsSettingsResult {
+        val payload = JSONObject()
+        radiusMiles?.let { payload.put("radius_miles", it) }
+        pollIntervalSeconds?.let { payload.put("poll_interval_seconds", it) }
+        eventFilters?.let { filters ->
+            val filtersJson = JSONObject()
+            filters.forEach { (event, enabled) ->
+                filtersJson.put(event, enabled)
+            }
+            payload.put("event_filters", filtersJson)
+        }
+
+        return putJson("/api/warnings/settings", payload) { json, _ ->
+            parseWarningsSettingsResult(json)
+        }
+    }
+
+    fun fetchPlatformWarnings(force: Boolean = false): PlatformWarningsResult {
+        val path = if (force) {
+            "/api/warnings/platform?force=1"
+        } else {
+            "/api/warnings/platform"
+        }
+
+        return getJson(path) { json, _ ->
+            val alerts = json.optJSONArray("alerts").toWarningAlerts()
+            PlatformWarningsResult(
+                success = true,
+                alerts = alerts,
+                message = json.optString("message").ifBlank { null },
+                fetchedAt = json.optString("fetched_at").ifBlank { null },
+                settings = json.optJSONObject("settings")?.let { parseWarningsSettings(it) },
+            )
+        }
+    }
+
+    private fun parseWarningsSettingsResult(json: JSONObject): WarningsSettingsResult {
+        val settingsJson = json.optJSONObject("settings")
+            ?: return WarningsSettingsResult(success = false, error = "Warnings settings missing from response")
+
+        return WarningsSettingsResult(
+            success = true,
+            settings = parseWarningsSettings(settingsJson),
+        )
+    }
+
+    private fun parseWarningsSettings(json: JSONObject): WarningsSettings {
+        val filtersJson = json.optJSONObject("event_filters")
+        val filters = mutableMapOf<String, Boolean>()
+        if (filtersJson != null) {
+            filtersJson.keys().forEach { key ->
+                filters[key] = filtersJson.optBoolean(key, true)
+            }
+        }
+
+        return WarningsSettings(
+            pollIntervalSeconds = json.optInt("poll_interval_seconds", 3600),
+            radiusMiles = json.optInt("radius_miles", 700),
+            eventFilters = filters,
+            fetchedAt = json.optString("fetched_at").ifBlank { null },
+            cachedAlertCount = json.optInt("cached_alert_count", 0),
+        )
+    }
+
+    private fun org.json.JSONArray?.toWarningAlerts(): List<WarningAlert> {
+        if (this == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until length()) {
+                val item = optJSONObject(index) ?: continue
+                add(
+                    WarningAlert(
+                        id = item.optString("id"),
+                        event = item.optString("event"),
+                        severity = item.optString("severity"),
+                        urgency = item.optString("urgency"),
+                        headline = item.optString("headline"),
+                        description = item.optString("description"),
+                        instruction = item.optString("instruction").ifBlank { null },
+                        areaDesc = item.optString("area_desc"),
+                        areaLabel = item.optString("area_label"),
+                        senderName = item.optString("sender_name"),
+                        sent = item.optString("sent"),
+                        effective = item.optString("effective"),
+                        expires = item.optString("expires"),
+                        ends = item.optString("ends").ifBlank { null },
+                        distanceMiles = item.optDouble("distance_miles"),
+                        color = item.optString("color").ifBlank { "#ff8c00" },
+                    ),
+                )
+            }
+        }
+    }
+
     private fun parseOverlaySettingsResult(json: JSONObject): OverlaySettingsResult {
         val settingsJson = json.optJSONObject("settings")
             ?: return OverlaySettingsResult(success = false, error = "Overlay settings missing from response")
@@ -316,6 +464,10 @@ class GpsApiClient(
                 WeatherResult(success = false, error = message)
             request.url.encodedPath.endsWith("/overlay/settings") ->
                 OverlaySettingsResult(success = false, error = message)
+            request.url.encodedPath.endsWith("/warnings/settings") ->
+                WarningsSettingsResult(success = false, error = message)
+            request.url.encodedPath.contains("/warnings/platform") ->
+                PlatformWarningsResult(success = false, error = message)
             else -> PairResult(success = false, error = message)
         }
     }

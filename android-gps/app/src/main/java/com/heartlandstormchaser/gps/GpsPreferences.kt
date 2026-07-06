@@ -180,6 +180,36 @@ class GpsPreferences(context: Context) {
         return CitySuggestion(city, state)
     }
 
+    fun isWarningSoundEnabled(event: String): Boolean {
+        if (!WarningDefinitions.hasSound(event)) {
+            return false
+        }
+        return prefs.getBoolean(soundKey(event), true)
+    }
+
+    fun setWarningSoundEnabled(event: String, enabled: Boolean) {
+        if (!WarningDefinitions.hasSound(event)) {
+            return
+        }
+        prefs.edit().putBoolean(soundKey(event), enabled).apply()
+    }
+
+    fun allWarningSoundSettings(): Map<String, Boolean> {
+        return WarningDefinitions.SOUND_EVENT_TYPES.associateWith { isWarningSoundEnabled(it) }
+    }
+
+    fun saveWarningSoundSettings(settings: Map<String, Boolean>) {
+        val editor = prefs.edit()
+        settings.forEach { (event, enabled) ->
+            if (WarningDefinitions.hasSound(event)) {
+                editor.putBoolean(soundKey(event), enabled)
+            }
+        }
+        editor.apply()
+    }
+
+    private fun soundKey(event: String): String = "warning_sound_${event.lowercase().replace(" ", "_")}"
+
     private fun putNullableDouble(key: String, value: Double?) {
         prefs.edit().apply {
             if (value == null) {

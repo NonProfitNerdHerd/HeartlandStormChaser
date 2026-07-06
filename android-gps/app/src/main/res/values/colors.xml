@@ -7,4 +7,5 @@
     <color name="md_theme_on_surface">#F8FAFC</color>
     <color name="md_theme_error">#F87171</color>
     <color name="md_theme_success">#4ADE80</color>
+    <color name="md_theme_outline">#334155</color>
 </resources>

@@ -11,130 +11,149 @@
         android:orientation="vertical"
         android:padding="20dp">
 
-        <TextView
+        <com.google.android.material.card.MaterialCardView
+            style="@style/OverlaySectionCard"
             android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/overlays_location_heading"
-            android:textColor="@color/md_theme_on_surface"
-            android:textSize="18sp"
-            android:textStyle="bold" />
+            android:layout_height="wrap_content">
 
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/overlays_location_subtitle"
-            android:textColor="@color/md_theme_on_surface"
-            android:alpha="0.85" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/locationInputLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:hint="@string/label_overlay_location"
-            app:boxCornerRadiusBottomEnd="16dp"
-            app:boxCornerRadiusBottomStart="16dp"
-            app:boxCornerRadiusTopEnd="16dp"
-            app:boxCornerRadiusTopStart="16dp">
-
-            <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/locationInput"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="center_vertical"
-                android:inputType="textCapWords"
-                android:maxLines="1"
-                android:minHeight="64dp"
-                android:paddingTop="18dp"
-                android:paddingBottom="18dp"
-                android:textSize="18sp" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:orientation="vertical"
+                android:padding="20dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/updateLocationButton"
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/overlays_location_heading"
+                    android:textColor="@color/md_theme_on_surface"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:alpha="0.85"
+                    android:text="@string/overlays_location_subtitle"
+                    android:textColor="@color/md_theme_on_surface" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/locationInputLayout"
+                    style="@style/OverlayInputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:hint="@string/label_overlay_location">
+
+                    <com.google.android.material.textfield.MaterialAutoCompleteTextView
+                        android:id="@+id/locationInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="center_vertical"
+                        android:inputType="textCapWords"
+                        android:maxLines="1"
+                        android:minHeight="72dp"
+                        android:paddingTop="20dp"
+                        android:paddingBottom="20dp"
+                        android:textSize="20sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/updateLocationButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/action_update_target_location" />
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/openMapsButton"
+                    style="@style/Widget.Material3.Button.OutlinedButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:text="@string/action_open_in_google_maps" />
+
+                <TextView
+                    android:id="@+id/locationStatusText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:alpha="0.85"
+                    android:textColor="@color/md_theme_on_surface"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
+
+        <com.google.android.material.card.MaterialCardView
+            style="@style/OverlaySectionCard"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/action_update_target_location" />
+            android:layout_marginTop="20dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/openMapsButton"
-            style="@style/Widget.Material3.Button.OutlinedButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/action_open_in_google_maps" />
-
-        <TextView
-            android:id="@+id/locationStatusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textColor="@color/md_theme_on_surface"
-            android:alpha="0.85"
-            android:visibility="gone" />
-
-        <View
-            android:layout_width="match_parent"
-            android:layout_height="1dp"
-            android:layout_marginTop="24dp"
-            android:layout_marginBottom="24dp"
-            android:alpha="0.2"
-            android:background="@color/md_theme_on_surface" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:text="@string/overlays_ticker_heading"
-            android:textColor="@color/md_theme_on_surface"
-            android:textSize="18sp"
-            android:textStyle="bold" />
-
-        <TextView
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:text="@string/overlays_ticker_subtitle"
-            android:textColor="@color/md_theme_on_surface"
-            android:alpha="0.85" />
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/tickerInputLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:hint="@string/label_overlay_ticker"
-            app:counterEnabled="true"
-            app:counterMaxLength="500">
-
-            <com.google.android.material.textfield.TextInputEditText
-                android:id="@+id/tickerInput"
+            <LinearLayout
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
-                android:gravity="top"
-                android:inputType="textCapSentences|textMultiLine"
-                android:maxLength="500"
-                android:minLines="3" />
-        </com.google.android.material.textfield.TextInputLayout>
+                android:orientation="vertical"
+                android:padding="20dp">
 
-        <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveTickerButton"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:text="@string/action_save_overlay_ticker" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="@string/overlays_ticker_heading"
+                    android:textColor="@color/md_theme_on_surface"
+                    android:textSize="18sp"
+                    android:textStyle="bold" />
 
-        <TextView
-            android:id="@+id/tickerStatusText"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="8dp"
-            android:textColor="@color/md_theme_on_surface"
-            android:alpha="0.85"
-            android:visibility="gone" />
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:alpha="0.85"
+                    android:text="@string/overlays_ticker_subtitle"
+                    android:textColor="@color/md_theme_on_surface" />
+
+                <com.google.android.material.textfield.TextInputLayout
+                    android:id="@+id/tickerInputLayout"
+                    style="@style/OverlayInputLayout"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="16dp"
+                    android:hint="@string/label_overlay_ticker"
+                    app:counterEnabled="true"
+                    app:counterMaxLength="500">
+
+                    <com.google.android.material.textfield.TextInputEditText
+                        android:id="@+id/tickerInput"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:gravity="top"
+                        android:inputType="textCapSentences|textMultiLine"
+                        android:maxLength="500"
+                        android:minHeight="72dp"
+                        android:minLines="3"
+                        android:paddingTop="16dp"
+                        android:paddingBottom="16dp"
+                        android:textSize="18sp" />
+                </com.google.android.material.textfield.TextInputLayout>
+
+                <com.google.android.material.button.MaterialButton
+                    android:id="@+id/saveTickerButton"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="12dp"
+                    android:text="@string/action_save_overlay_ticker" />
+
+                <TextView
+                    android:id="@+id/tickerStatusText"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="8dp"
+                    android:alpha="0.85"
+                    android:textColor="@color/md_theme_on_surface"
+                    android:visibility="gone" />
+            </LinearLayout>
+        </com.google.android.material.card.MaterialCardView>
 
         <ProgressBar
             android:id="@+id/overlaysProgress"
