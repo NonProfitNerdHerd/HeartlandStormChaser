@@ -32,17 +32,6 @@
     </header>
 
     <main class="warnings-main">
-      <header class="warnings-top">
-        <div class="warnings-top__title">
-          <h1>Warnings</h1>
-          <p>Nearby NWS alerts</p>
-        </div>
-        <div class="warnings-top__badges">
-          <span class="badge badge--danger" id="gps-status-badge">GPS CHECKING</span>
-          <span class="badge badge--muted" id="monitor-status-badge">MONITOR IDLE</span>
-        </div>
-      </header>
-
       <div class="warnings-controls">
         <label class="warnings-control">
           <span class="warnings-control__label">Radius</span>
@@ -52,23 +41,24 @@
             <option value="100">100 miles</option>
             <option value="200">200 miles</option>
             <option value="350">350 miles</option>
+            <option value="500">500 miles</option>
             <option value="700" selected>700 miles</option>
+            <option value="1000">1000 miles</option>
           </select>
         </label>
 
-        <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh</button>
+        <button type="button" class="btn btn--secondary" id="filter-btn">Filter warnings</button>
 
-        <button
-          type="button"
-          class="btn btn--danger warnings-polling-btn warnings-polling-btn--on"
-          id="polling-toggle"
-          aria-pressed="true"
-        >
-          Warning polling: On
-        </button>
+        <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh now</button>
 
-        <div class="warnings-controls__meta" id="monitor-meta">
-          Loading warnings…
+        <div class="warnings-controls__status">
+          <div class="warnings-controls__badges">
+            <span class="badge badge--danger" id="gps-status-badge">GPS CHECKING</span>
+            <span class="badge badge--muted" id="monitor-status-badge">MONITOR IDLE</span>
+          </div>
+          <div class="warnings-controls__meta" id="monitor-meta">
+            Loading warnings…
+          </div>
         </div>
       </div>
 
@@ -114,12 +104,68 @@
               </button>
               <button type="button" class="warnings-layer-btn" data-layer="dark">Dark mode</button>
               <button type="button" class="warnings-layer-btn" data-layer="satellite">Satellite</button>
+              <button type="button" class="warnings-layer-btn" id="labels-panel-toggle">Labels</button>
+            </div>
+            <div class="warnings-labels-panel warnings-labels-panel--hidden" id="labels-panel" aria-label="Map label controls">
+              <div class="warnings-labels-panel__header">
+                <strong>Labels</strong>
+                <button type="button" class="warnings-detail-close" id="labels-panel-close" aria-label="Close labels panel">×</button>
+              </div>
+              <label class="warnings-labels-toggle">
+                <input type="checkbox" id="city-labels-toggle" checked />
+                <span>City labels</span>
+              </label>
+              <label class="warnings-labels-field">
+                <span>City density</span>
+                <select id="city-density-select" class="warnings-select">
+                  <option value="sparse">Sparse</option>
+                  <option value="normal" selected>Normal</option>
+                  <option value="dense">Dense</option>
+                </select>
+              </label>
+              <label class="warnings-labels-field">
+                <span>City size</span>
+                <input type="range" id="city-size-range" min="0.8" max="1.4" step="0.1" value="1" />
+                <span id="city-size-value">1.0</span>
+              </label>
+              <label class="warnings-labels-toggle">
+                <input type="checkbox" id="boundary-lines-toggle" checked />
+                <span>County / state outlines</span>
+              </label>
             </div>
             <div id="warnings-map" class="warnings-map" role="application" aria-label="Warnings map"></div>
           </div>
         </section>
       </div>
     </main>
+
+    <dialog class="warnings-dialog" id="filter-dialog" aria-labelledby="filter-dialog-title">
+      <form method="dialog" class="warnings-dialog__inner" id="filter-form">
+        <div class="warnings-dialog__header">
+          <h2 id="filter-dialog-title">Warning filters</h2>
+          <button type="button" class="warnings-detail-close" id="filter-dialog-close" aria-label="Close filter dialog">×</button>
+        </div>
+        <p class="warnings-dialog__lead">Choose warning types and how often the server polls NWS. All devices share the same schedule and cached data.</p>
+        <label class="warnings-labels-field warnings-dialog__interval">
+          <span>NWS polling interval</span>
+          <select id="poll-interval-select" class="warnings-select">
+            <option value="60">1 minute</option>
+            <option value="300">5 minutes</option>
+            <option value="600">10 minutes</option>
+            <option value="1800">30 minutes</option>
+            <option value="3600" selected>1 hour</option>
+          </select>
+        </label>
+        <div class="warnings-filter-actions">
+          <button type="button" class="btn btn--secondary btn--small" id="filter-enable-all">Enable all</button>
+          <button type="button" class="btn btn--secondary btn--small" id="filter-disable-all">Disable all</button>
+        </div>
+        <div class="warnings-filter-list" id="filter-list"></div>
+        <div class="warnings-dialog__footer">
+          <button type="submit" class="btn btn--primary">Apply settings</button>
+        </div>
+      </form>
+    </dialog>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/js/nav.js"></script>

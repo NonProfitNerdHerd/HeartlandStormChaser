@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="HeartlandStormChaser dashboard — map and alert status overview"
+      content="HeartlandStormChaser dashboard — live service and alert status overview"
     />
     <title>Dashboard · HeartlandStormChaser</title>
     <link rel="stylesheet" href="/css/base.css" />
@@ -29,49 +29,68 @@
     </header>
 
     <main class="site-main">
-      <header class="page-header">
-        <h1>Operations dashboard</h1>
-        <p class="page-header__lead">
-          Placeholder layout for chase map and multi-layer alert monitoring. Live data
-          feeds connect in later phases.
-        </p>
-      </header>
+      <div class="dashboard-toolbar">
+        <p class="dashboard-toolbar__status" id="dashboard-refresh-status">Loading service status…</p>
+        <button type="button" class="btn btn--secondary" id="dashboard-refresh-btn">Refresh now</button>
+      </div>
 
-      <section class="map-placeholder" aria-label="Map placeholder">
-        <div class="map-placeholder__inner">
-          <span class="map-placeholder__label">Map area</span>
-          <p class="map-placeholder__text">
-            Interactive chase map will render here — GPS tracks, radar overlays, and
-            alert geometries.
-          </p>
-          <p class="map-placeholder__hint">Phase 2+ · Not connected yet</p>
-        </div>
-      </section>
-
-      <h2 class="dashboard-section-title">Status overview</h2>
+      <h2 class="dashboard-section-title">Live services</h2>
       <div class="dashboard-status-grid">
         <article class="status-card" id="card-gps">
           <div class="status-card__header">
-            <h3 class="status-card__title">GPS status</h3>
-            <span class="badge badge--muted" data-badge>Offline</span>
+            <h3 class="status-card__title">GPS</h3>
+            <span class="badge badge--muted" data-badge>Loading…</span>
           </div>
-          <p class="status-card__message" data-message>No devices connected</p>
+          <p class="status-card__message" data-message>Checking platform GPS source…</p>
+        </article>
+
+        <article class="status-card" id="card-warnings">
+          <div class="status-card__header">
+            <h3 class="status-card__title">NWS warnings</h3>
+            <span class="badge badge--muted" data-badge>Loading…</span>
+          </div>
+          <p class="status-card__message" data-message>Checking active warnings…</p>
         </article>
 
         <article class="status-card" id="card-weather">
           <div class="status-card__header">
-            <h3 class="status-card__title">Weather alerts</h3>
-            <span class="badge badge--muted" data-badge>Idle</span>
+            <h3 class="status-card__title">Platform weather</h3>
+            <span class="badge badge--muted" data-badge>Loading…</span>
           </div>
-          <p class="status-card__message" data-message>
-            NWS feed not connected. Alert layer placeholder only.
-          </p>
+          <p class="status-card__message" data-message>Checking NWS weather…</p>
         </article>
 
+        <article class="status-card" id="card-overlays">
+          <div class="status-card__header">
+            <h3 class="status-card__title">Broadcast overlays</h3>
+            <span class="badge badge--muted" data-badge>Loading…</span>
+          </div>
+          <p class="status-card__message" data-message>Checking overlay settings…</p>
+        </article>
+
+        <article class="status-card" id="card-chasers">
+          <div class="status-card__header">
+            <h3 class="status-card__title">Chasers streams</h3>
+            <span class="badge badge--muted" data-badge>Loading…</span>
+          </div>
+          <p class="status-card__message" data-message>Checking stream sources…</p>
+        </article>
+
+        <article class="status-card" id="card-system">
+          <div class="status-card__header">
+            <h3 class="status-card__title">System status</h3>
+            <span class="badge badge--muted" data-badge>Loading…</span>
+          </div>
+          <p class="status-card__message" data-message>Checking Worker API…</p>
+        </article>
+      </div>
+
+      <h2 class="dashboard-section-title dashboard-section-title--spaced">Planned alert layers</h2>
+      <div class="dashboard-status-grid">
         <article class="status-card" id="card-public-safety">
           <div class="status-card__header">
             <h3 class="status-card__title">Public safety alerts</h3>
-            <span class="badge badge--muted" data-badge>Idle</span>
+            <span class="badge badge--muted" data-badge>Not configured</span>
           </div>
           <p class="status-card__message" data-message>
             Feed not configured. Layer will monitor public safety sources.
@@ -81,7 +100,7 @@
         <article class="status-card" id="card-infrastructure">
           <div class="status-card__header">
             <h3 class="status-card__title">Infrastructure alerts</h3>
-            <span class="badge badge--muted" data-badge>Idle</span>
+            <span class="badge badge--muted" data-badge>Not configured</span>
           </div>
           <p class="status-card__message" data-message>
             Feed not configured. Power, telecom, and transport alerts planned.
@@ -91,20 +110,10 @@
         <article class="status-card" id="card-cyber">
           <div class="status-card__header">
             <h3 class="status-card__title">Cyber alerts</h3>
-            <span class="badge badge--muted" data-badge>Idle</span>
+            <span class="badge badge--muted" data-badge>Not configured</span>
           </div>
           <p class="status-card__message" data-message>
             Feed not configured. Cyber threat monitoring placeholder.
-          </p>
-        </article>
-
-        <article class="status-card" id="card-system">
-          <div class="status-card__header">
-            <h3 class="status-card__title">System status</h3>
-            <span class="badge badge--muted" id="system-badge" data-badge>Checking…</span>
-          </div>
-          <p class="status-card__message" id="system-message" data-message>
-            Checking Worker API…
           </p>
         </article>
       </div>
