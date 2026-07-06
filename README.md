@@ -42,6 +42,7 @@ Set `GPS_PAIRING_PIN` in `.dev.vars` for local GPS pairing tests.
 | Homepage | `/` |
 | Dashboard | `/dashboard.html` |
 | GPS | `/gps.html` |
+| Overlays (OBS) | `/overlays.html` |
 | Chasers Streams | `/chasers-streams.html` |
 | Settings | `/settings.html` |
 | OBS GPS/weather overlay | `/overlays/gps-weather.html` |
@@ -138,8 +139,7 @@ docs/            → Workflow and setup guides
 
 ## Not built yet
 
-- Web Overlays settings page (Phase 4)
-- OBS ticker overlay (ticker text is stored; overlay UI not built)
+- OBS ticker overlay and standalone weather widget (listed as coming soon on `/overlays.html`)
 - Live alert feeds (weather, public safety, infrastructure, cyber)
 - Interactive chase map on dashboard
 - Authentication

@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="OBS browser source overlays for HeartlandStormChaser live streams"
+    />
+    <title>Overlays · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/overlays.css" />
+  </head>
+  <body data-page="overlays">
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-logo" href="/">HeartlandStormChaser</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-link" href="/" data-nav="home">Home</a>
+          <a class="nav-link" href="/dashboard.html" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/gps.html" data-nav="gps">GPS</a>
+          <a class="nav-link" href="/overlays.html" data-nav="overlays">Overlays</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams"
+            >Chasers Streams</a
+          >
+          <a class="nav-link" href="/settings.html" data-nav="settings">Settings</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-main site-main--wide">
+      <header class="page-header">
+        <h1>Broadcast control</h1>
+        <p class="page-header__lead">
+          Preview OBS browser source overlays, copy their URLs, and open them in a new tab. Add each
+          URL in OBS as a <strong>Browser Source</strong> (recommended size varies by overlay).
+        </p>
+      </header>
+
+      <section class="overlay-summary" aria-labelledby="overlay-summary-heading">
+        <div class="overlay-summary__header">
+          <h2 class="overlay-summary__title" id="overlay-summary-heading">Overlay data</h2>
+          <span class="badge badge--muted" id="overlay-settings-badge">Loading…</span>
+        </div>
+        <dl class="overlay-summary__grid" id="overlay-settings-body">
+          <div class="overlay-summary__item">
+            <dt>Target city / state</dt>
+            <dd id="overlay-target-location">—</dd>
+          </div>
+          <div class="overlay-summary__item">
+            <dt>Status / ticker text</dt>
+            <dd id="overlay-ticker-text">—</dd>
+          </div>
+          <div class="overlay-summary__item">
+            <dt>Platform GPS</dt>
+            <dd id="overlay-platform-gps">—</dd>
+          </div>
+        </dl>
+        <p class="overlay-summary__hint">
+          Edit target location and ticker text in the Android app <strong>Overlays</strong> tab, or
+          via <code>PUT /api/overlay/settings</code>.
+        </p>
+      </section>
+
+      <div class="overlay-catalog" id="overlay-catalog" aria-live="polite">
+        <p class="overlay-catalog__loading">Loading overlay catalog…</p>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p>HeartlandStormChaser · OBS overlays</p>
+    </footer>
+
+    <script src="/js/nav.js"></script>
+    <script src="/js/overlays.js"></script>
+  </body>
+</html>

@@ -10,9 +10,11 @@ const required = [
 
 for (const key of required) {
   if (!process.env[key]?.trim()) {
-    console.warn(`Skipping D1 overlay update: missing ${key}.`);
-    console.warn("Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repo secrets to auto-update the GPS page QR code.");
-    process.exit(0);
+    console.error(`D1 overlay update failed: missing ${key}.`);
+    console.error(
+      "Add CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID repo secrets, then re-run the Build Android APK workflow.",
+    );
+    process.exit(1);
   }
 }
 
