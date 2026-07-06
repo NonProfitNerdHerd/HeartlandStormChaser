@@ -154,6 +154,32 @@ class GpsPreferences(context: Context) {
             .apply()
     }
 
+    var overlayTargetCity: String
+        get() = prefs.getString(KEY_OVERLAY_TARGET_CITY, "").orEmpty()
+        set(value) {
+            prefs.edit().putString(KEY_OVERLAY_TARGET_CITY, value.trim()).apply()
+        }
+
+    var overlayTargetState: String
+        get() = prefs.getString(KEY_OVERLAY_TARGET_STATE, "").orEmpty()
+        set(value) {
+            prefs.edit().putString(KEY_OVERLAY_TARGET_STATE, value.trim().uppercase()).apply()
+        }
+
+    fun saveOverlayTarget(city: String, state: String) {
+        overlayTargetCity = city
+        overlayTargetState = state
+    }
+
+    fun cachedOverlayTarget(): CitySuggestion? {
+        val city = overlayTargetCity
+        val state = overlayTargetState
+        if (city.isBlank() || state.isBlank()) {
+            return null
+        }
+        return CitySuggestion(city, state)
+    }
+
     private fun putNullableDouble(key: String, value: Double?) {
         prefs.edit().apply {
             if (value == null) {
@@ -183,6 +209,8 @@ class GpsPreferences(context: Context) {
         private const val KEY_LAST_SENT_AT = "last_sent_at"
         private const val KEY_LAST_UPLOAD_SUCCESS = "last_upload_success"
         private const val KEY_LAST_UPLOAD_ERROR = "last_upload_error"
+        private const val KEY_OVERLAY_TARGET_CITY = "overlay_target_city"
+        private const val KEY_OVERLAY_TARGET_STATE = "overlay_target_state"
         private const val DEFAULT_SERVER_URL = "https://heartlandstormchaser.ike-j-rebout.workers.dev"
     }
 }

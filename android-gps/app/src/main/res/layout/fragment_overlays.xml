@@ -28,31 +28,15 @@
             android:alpha="0.85" />
 
         <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/stateInputLayout"
-            style="@style/Widget.Material3.TextInputLayout.OutlinedBox.ExposedDropdownMenu"
-            android:layout_width="match_parent"
-            android:layout_height="wrap_content"
-            android:layout_marginTop="16dp"
-            android:hint="@string/label_overlay_state">
-
-            <AutoCompleteTextView
-                android:id="@+id/stateInput"
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:inputType="textCapCharacters"
-                android:maxLength="2" />
-        </com.google.android.material.textfield.TextInputLayout>
-
-        <com.google.android.material.textfield.TextInputLayout
-            android:id="@+id/cityInputLayout"
+            android:id="@+id/locationInputLayout"
             style="@style/Widget.Material3.TextInputLayout.OutlinedBox"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="12dp"
-            android:hint="@string/label_overlay_city">
+            android:layout_marginTop="16dp"
+            android:hint="@string/label_overlay_location">
 
             <com.google.android.material.textfield.MaterialAutoCompleteTextView
-                android:id="@+id/cityInput"
+                android:id="@+id/locationInput"
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
                 android:inputType="textCapWords"
@@ -60,11 +44,19 @@
         </com.google.android.material.textfield.TextInputLayout>
 
         <com.google.android.material.button.MaterialButton
-            android:id="@+id/saveLocationButton"
+            android:id="@+id/updateLocationButton"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="12dp"
-            android:text="@string/action_save_overlay_location" />
+            android:text="@string/action_update_target_location" />
+
+        <com.google.android.material.button.MaterialButton
+            android:id="@+id/openMapsButton"
+            style="@style/Widget.Material3.Button.OutlinedButton"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="8dp"
+            android:text="@string/action_open_in_google_maps" />
 
         <TextView
             android:id="@+id/locationStatusText"

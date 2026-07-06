@@ -1,5 +1,8 @@
 package com.heartlandstormchaser.gps
 
+import android.content.ActivityNotFoundException
+import android.content.Intent
+import android.net.Uri
 import android.os.Bundle
 import android.text.Editable
 import android.text.TextWatcher
@@ -19,8 +22,9 @@ class OverlaysFragment : Fragment() {
     private var _binding: FragmentOverlaysBinding? = null
     private val binding get() = _binding!!
     private lateinit var preferences: GpsPreferences
-    private lateinit var cityAdapter: ArrayAdapter<String>
-    private var suppressCityFiltering = false
+    private lateinit var locationAdapter: ArrayAdapter<String>
+    private var suppressLocationFiltering = false
+    private var selectedTarget: CitySuggestion? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -35,12 +39,17 @@ class OverlaysFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         preferences = GpsPreferences(requireContext())
 
-        setupStateDropdown()
-        setupCityAutocomplete()
+        setupLocationAutocomplete()
 
-        binding.saveLocationButton.setOnClickListener { saveLocation() }
+        binding.updateLocationButton.setOnClickListener { updateTargetLocation() }
+        binding.openMapsButton.setOnClickListener { openTargetInGoogleMaps() }
         binding.saveTickerButton.setOnClickListener { saveTicker() }
 
+        restoreCachedTarget()
+    }
+
+    override fun onResume() {
+        super.onResume()
         loadSettings()
     }
 
@@ -49,89 +58,78 @@ class OverlaysFragment : Fragment() {
         super.onDestroyView()
     }
 
-    private fun setupStateDropdown() {
-        val states = resources.getStringArray(R.array.us_state_codes).toList()
-        val adapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, states)
-        binding.stateInput.setAdapter(adapter)
+    private fun setupLocationAutocomplete() {
+        locationAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, mutableListOf())
+        binding.locationInput.setAdapter(locationAdapter)
 
-        binding.stateInput.setOnItemClickListener { _, _, _, _ ->
-            refreshCitySuggestions(binding.cityInput.text?.toString().orEmpty())
-        }
-
-        binding.stateInput.addTextChangedListener(object : TextWatcher {
+        binding.locationInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
             override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
             override fun afterTextChanged(s: Editable?) {
-                refreshCitySuggestions(binding.cityInput.text?.toString().orEmpty())
-            }
-        })
-    }
-
-    private fun setupCityAutocomplete() {
-        cityAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, mutableListOf())
-        binding.cityInput.setAdapter(cityAdapter)
-
-        binding.cityInput.addTextChangedListener(object : TextWatcher {
-            override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
-            override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) = Unit
-            override fun afterTextChanged(s: Editable?) {
-                if (suppressCityFiltering) {
+                if (suppressLocationFiltering) {
                     return
                 }
-                refreshCitySuggestions(s?.toString().orEmpty())
+                selectedTarget = UsCitySuggestions.parseSelection(s?.toString().orEmpty())
+                refreshLocationSuggestions(s?.toString().orEmpty())
+                updateMapsButtonState()
             }
         })
 
-        binding.cityInput.setOnItemClickListener { _, _, position, _ ->
-            val label = cityAdapter.getItem(position) ?: return@setOnItemClickListener
+        binding.locationInput.setOnItemClickListener { _, _, position, _ ->
+            val label = locationAdapter.getItem(position) ?: return@setOnItemClickListener
             UsCitySuggestions.parseSelection(label)?.let { suggestion ->
-                suppressCityFiltering = true
-                binding.cityInput.setText(suggestion.city)
-                binding.stateInput.setText(suggestion.state, false)
-                suppressCityFiltering = false
+                applyTargetToField(suggestion)
+            }
+        }
+
+        binding.locationInput.setOnFocusChangeListener { _, hasFocus ->
+            if (hasFocus && binding.locationInput.text?.isNotBlank() == true) {
+                refreshLocationSuggestions(binding.locationInput.text?.toString().orEmpty())
+                binding.locationInput.showDropDown()
             }
         }
     }
 
-    private fun refreshCitySuggestions(query: String) {
-        val state = binding.stateInput.text?.toString()?.trim()?.uppercase()?.takeIf { it.length == 2 }
-        val suggestions = UsCitySuggestions.filter(query, state)
-        cityAdapter.clear()
-        cityAdapter.addAll(suggestions.map { it.label })
-        cityAdapter.notifyDataSetChanged()
+    private fun refreshLocationSuggestions(query: String) {
+        val suggestions = UsCitySuggestions.filter(query)
+        locationAdapter.clear()
+        locationAdapter.addAll(suggestions.map { it.label })
+        locationAdapter.notifyDataSetChanged()
+        if (suggestions.isNotEmpty() && binding.locationInput.hasFocus()) {
+            binding.locationInput.showDropDown()
+        }
     }
 
-    private fun loadSettings() {
-        setLoading(true)
-        lifecycleScope.launch {
-            val client = GpsApiClient(preferences.serverUrl)
-            val result = withContext(Dispatchers.IO) {
-                client.fetchOverlaySettings()
-            }
-            setLoading(false)
-
-            if (!result.success || result.settings == null) {
-                showLocationStatus(result.error ?: getString(R.string.error_load_overlay_settings), false)
-                return@launch
-            }
-
-            applySettings(result.settings)
+    private fun restoreCachedTarget() {
+        preferences.cachedOverlayTarget()?.let { target ->
+            applyTargetToField(target, persistCache = false)
         }
+    }
+
+    private fun applyTargetToField(target: CitySuggestion, persistCache: Boolean = true) {
+        suppressLocationFiltering = true
+        binding.locationInput.setText(target.label)
+        binding.locationInput.setSelection(binding.locationInput.text?.length ?: 0)
+        suppressLocationFiltering = false
+        selectedTarget = target
+        if (persistCache) {
+            preferences.saveOverlayTarget(target.city, target.state)
+        }
+        updateMapsButtonState()
     }
 
     private fun applySettings(settings: OverlaySettings) {
-        suppressCityFiltering = true
-        binding.cityInput.setText(settings.targetCity)
-        binding.stateInput.setText(settings.targetState, false)
         binding.tickerInput.setText(settings.tickerText)
-        suppressCityFiltering = false
 
-        if (settings.targetCity.isNotBlank() || settings.targetState.isNotBlank()) {
-            val label = listOf(settings.targetCity, settings.targetState)
-                .filter { it.isNotBlank() }
-                .joinToString(", ")
-            showLocationStatus(getString(R.string.overlay_location_saved_preview, label), true)
-        } else {
+        if (settings.targetCity.isNotBlank() && settings.targetState.isNotBlank()) {
+            val target = CitySuggestion(settings.targetCity, settings.targetState)
+            applyTargetToField(target)
+            showLocationStatus(
+                getString(R.string.overlay_location_saved_preview, target.label),
+                true,
+            )
+        } else if (selectedTarget == null) {
+            binding.locationInput.text?.clear()
             binding.locationStatusText.visibility = View.GONE
         }
 
@@ -140,28 +138,22 @@ class OverlaysFragment : Fragment() {
         } else {
             binding.tickerStatusText.visibility = View.GONE
         }
+
+        updateMapsButtonState()
     }
 
-    private fun saveLocation() {
-        val city = binding.cityInput.text?.toString()?.trim().orEmpty()
-        val state = binding.stateInput.text?.toString()?.trim()?.uppercase().orEmpty()
+    private fun resolveTargetFromInput(): CitySuggestion? {
+        selectedTarget?.let { return it }
+        return UsCitySuggestions.parseSelection(binding.locationInput.text?.toString().orEmpty())
+    }
 
-        binding.cityInputLayout.error = null
-        binding.stateInputLayout.error = null
+    private fun updateTargetLocation() {
+        binding.locationInputLayout.error = null
 
-        when {
-            city.isBlank() -> {
-                binding.cityInputLayout.error = getString(R.string.error_overlay_city_required)
-                return
-            }
-            state.isBlank() -> {
-                binding.stateInputLayout.error = getString(R.string.error_overlay_state_required)
-                return
-            }
-            state.length != 2 -> {
-                binding.stateInputLayout.error = getString(R.string.error_overlay_state_invalid)
-                return
-            }
+        val target = resolveTargetFromInput()
+        if (target == null) {
+            binding.locationInputLayout.error = getString(R.string.error_overlay_location_invalid)
+            return
         }
 
         setLoading(true)
@@ -169,8 +161,8 @@ class OverlaysFragment : Fragment() {
             val client = GpsApiClient(preferences.serverUrl)
             val result = withContext(Dispatchers.IO) {
                 client.updateOverlaySettings(
-                    targetCity = city,
-                    targetState = state,
+                    targetCity = target.city,
+                    targetState = target.state,
                 )
             }
             setLoading(false)
@@ -180,8 +172,38 @@ class OverlaysFragment : Fragment() {
                 return@launch
             }
 
+            applyTargetToField(target)
             applySettings(result.settings)
-            showLocationStatus(getString(R.string.overlay_location_saved), true)
+            showLocationStatus(getString(R.string.overlay_location_updated), true)
+        }
+    }
+
+    private fun openTargetInGoogleMaps() {
+        val target = resolveTargetFromInput()
+        if (target == null) {
+            binding.locationInputLayout.error = getString(R.string.error_overlay_location_invalid)
+            return
+        }
+
+        val destination = Uri.encode("${target.city}, ${target.state}")
+        val navigationIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("google.navigation:q=$destination"),
+        ).setPackage("com.google.android.apps.maps")
+
+        val mapsIntent = Intent(
+            Intent.ACTION_VIEW,
+            Uri.parse("https://www.google.com/maps/dir/?api=1&destination=$destination"),
+        )
+
+        try {
+            startActivity(navigationIntent)
+        } catch (_: ActivityNotFoundException) {
+            try {
+                startActivity(mapsIntent)
+            } catch (_: ActivityNotFoundException) {
+                showLocationStatus(getString(R.string.error_maps_app_unavailable), false)
+            }
         }
     }
 
@@ -205,12 +227,35 @@ class OverlaysFragment : Fragment() {
         }
     }
 
+    private fun loadSettings() {
+        setLoading(true)
+        lifecycleScope.launch {
+            val client = GpsApiClient(preferences.serverUrl)
+            val result = withContext(Dispatchers.IO) {
+                client.fetchOverlaySettings()
+            }
+            setLoading(false)
+
+            if (!result.success || result.settings == null) {
+                preferences.cachedOverlayTarget()?.let { applyTargetToField(it, persistCache = false) }
+                showLocationStatus(result.error ?: getString(R.string.error_load_overlay_settings), false)
+                return@launch
+            }
+
+            applySettings(result.settings)
+        }
+    }
+
+    private fun updateMapsButtonState() {
+        binding.openMapsButton.isEnabled = resolveTargetFromInput() != null
+    }
+
     private fun setLoading(loading: Boolean) {
         binding.overlaysProgress.visibility = if (loading) View.VISIBLE else View.GONE
-        binding.saveLocationButton.isEnabled = !loading
+        binding.updateLocationButton.isEnabled = !loading
+        binding.openMapsButton.isEnabled = !loading && resolveTargetFromInput() != null
         binding.saveTickerButton.isEnabled = !loading
-        binding.cityInput.isEnabled = !loading
-        binding.stateInput.isEnabled = !loading
+        binding.locationInput.isEnabled = !loading
         binding.tickerInput.isEnabled = !loading
     }
 

@@ -54,11 +54,13 @@ object UsCitySuggestions {
         CitySuggestion("Houston", "TX"),
         CitySuggestion("Hutchinson", "KS"),
         CitySuggestion("Indianapolis", "IN"),
+        CitySuggestion("Janesville", "WI"),
         CitySuggestion("Jackson", "MS"),
         CitySuggestion("Joplin", "MO"),
         CitySuggestion("Kansas City", "KS"),
         CitySuggestion("Kansas City", "MO"),
         CitySuggestion("Kearney", "NE"),
+        CitySuggestion("La Crosse", "WI"),
         CitySuggestion("Lafayette", "LA"),
         CitySuggestion("Laredo", "TX"),
         CitySuggestion("Lawton", "OK"),
@@ -80,11 +82,13 @@ object UsCitySuggestions {
         CitySuggestion("New Orleans", "LA"),
         CitySuggestion("Norman", "OK"),
         CitySuggestion("North Platte", "NE"),
+        CitySuggestion("Oshkosh", "WI"),
         CitySuggestion("Oklahoma City", "OK"),
         CitySuggestion("Omaha", "NE"),
         CitySuggestion("Pampa", "TX"),
         CitySuggestion("Ponca City", "OK"),
         CitySuggestion("Pueblo", "CO"),
+        CitySuggestion("Racine", "WI"),
         CitySuggestion("Rapid City", "SD"),
         CitySuggestion("Rogers", "AR"),
         CitySuggestion("Salina", "KS"),
@@ -104,20 +108,20 @@ object UsCitySuggestions {
         CitySuggestion("Yukon", "OK"),
     )
 
-    fun filter(query: String, stateFilter: String? = null, limit: Int = 8): List<CitySuggestion> {
+    fun formatLabel(city: String, state: String): String {
+        return CitySuggestion(city.trim(), state.trim().uppercase()).label
+    }
+
+    fun filter(query: String, limit: Int = 8): List<CitySuggestion> {
         val normalizedQuery = query.trim()
         if (normalizedQuery.isBlank()) {
             return emptyList()
         }
 
-        val normalizedState = stateFilter?.trim()?.uppercase()?.takeIf { it.isNotBlank() }
         val queryLower = normalizedQuery.lowercase()
 
         return cities.asSequence()
             .filter { suggestion ->
-                if (normalizedState != null && suggestion.state != normalizedState) {
-                    return@filter false
-                }
                 suggestion.city.lowercase().contains(queryLower) ||
                     suggestion.label.lowercase().contains(queryLower)
             }
@@ -137,12 +141,26 @@ object UsCitySuggestions {
         val commaParts = trimmed.split(",", limit = 2).map { it.trim() }
         if (commaParts.size == 2) {
             val city = commaParts[0]
-            val state = commaParts[1].uppercase()
-            if (city.isNotBlank() && state.length == 2) {
+            val state = normalizeState(commaParts[1])
+            if (city.isNotBlank() && state != null) {
+                return CitySuggestion(city, state)
+            }
+        }
+
+        val spaceMatch = Regex("^(.+?)\\s+([A-Za-z]{2})$").find(trimmed)
+        if (spaceMatch != null) {
+            val city = spaceMatch.groupValues[1].trim().trimEnd(',')
+            val state = normalizeState(spaceMatch.groupValues[2])
+            if (city.isNotBlank() && state != null) {
                 return CitySuggestion(city, state)
             }
         }
 
         return null
+    }
+
+    private fun normalizeState(raw: String): String? {
+        val state = raw.trim().uppercase()
+        return state.takeIf { it.length == 2 && it.all { char -> char.isLetter() } }
     }
 }

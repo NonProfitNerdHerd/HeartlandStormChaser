@@ -81,7 +81,8 @@ The app toolbar shows the installed version (`versionName` / `versionCode`). Mat
 
 The **Overlays** tab lets you configure data used by OBS browser sources:
 
-- **Overlay target location** — city + state with autocomplete suggestions (Heartland-focused city list). Saved to `overlay_target_city` and `overlay_target_state` in D1.
+- **Overlay target location** — single city/state autocomplete (e.g. `Janesville, WI`) saved to D1, with local cache for persistence
+- **Open in Google Maps** — navigation intent for Android Auto
 - **Ticker / status text** — freeform status line saved to `overlay_ticker_text` for future ticker overlays.
 
 Settings sync via:
