@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="National Weather Service warnings near the platform GPS location"
+    />
+    <title>Warnings · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="/css/warnings.css" />
+  </head>
+  <body data-page="warnings" class="warnings-body">
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-logo" href="/">HeartlandStormChaser</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-link" href="/" data-nav="home">Home</a>
+          <a class="nav-link" href="/dashboard.html" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/gps.html" data-nav="gps">GPS</a>
+          <a class="nav-link" href="/warnings.html" data-nav="warnings">Warnings</a>
+          <a class="nav-link" href="/overlays.html" data-nav="overlays">Overlays</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams"
+            >Chasers Streams</a
+          >
+          <a class="nav-link" href="/settings.html" data-nav="settings">Settings</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="warnings-main">
+      <header class="warnings-top">
+        <div class="warnings-top__title">
+          <h1>Warnings</h1>
+          <p>Nearby NWS alerts</p>
+        </div>
+        <div class="warnings-top__badges">
+          <span class="badge badge--danger" id="gps-status-badge">GPS CHECKING</span>
+          <span class="badge badge--muted" id="monitor-status-badge">MONITOR IDLE</span>
+        </div>
+      </header>
+
+      <div class="warnings-controls">
+        <label class="warnings-control">
+          <span class="warnings-control__label">Radius</span>
+          <select id="radius-select" class="warnings-select">
+            <option value="25">25 miles</option>
+            <option value="50">50 miles</option>
+            <option value="100">100 miles</option>
+            <option value="200">200 miles</option>
+            <option value="350">350 miles</option>
+            <option value="700" selected>700 miles</option>
+          </select>
+        </label>
+
+        <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh</button>
+
+        <button
+          type="button"
+          class="btn btn--danger warnings-polling-btn warnings-polling-btn--on"
+          id="polling-toggle"
+          aria-pressed="true"
+        >
+          Warning polling: On
+        </button>
+
+        <div class="warnings-controls__meta" id="monitor-meta">
+          Loading warnings…
+        </div>
+      </div>
+
+      <div class="warnings-workspace" id="warnings-workspace">
+        <aside class="warnings-list-panel" aria-labelledby="warnings-list-heading">
+          <div class="warnings-list-panel__header">
+            <h2 id="warnings-list-heading">Active warnings</h2>
+            <span class="warnings-count" id="warnings-count">0</span>
+          </div>
+          <div class="warnings-list" id="warnings-list">
+            <p class="warnings-empty">Loading warnings…</p>
+          </div>
+        </aside>
+
+        <section
+          class="warnings-detail-panel warnings-detail-panel--hidden"
+          id="warnings-detail-panel"
+          aria-labelledby="warnings-detail-heading"
+          aria-hidden="true"
+        >
+          <div class="warnings-detail-panel__header">
+            <h2 id="warnings-detail-heading">Warning details</h2>
+            <button type="button" class="warnings-detail-close" id="detail-close-btn" aria-label="Close warning details">
+              ×
+            </button>
+          </div>
+          <div class="warnings-detail-panel__body" id="warnings-detail-body"></div>
+        </section>
+
+        <section class="warnings-map-panel" aria-labelledby="warnings-map-heading">
+          <div class="warnings-map-panel__header">
+            <h2 class="warnings-map-panel__title" id="warnings-map-heading">Map</h2>
+            <div class="warnings-map-tools">
+              <button type="button" class="btn btn--secondary btn--small" id="fit-warnings-btn">
+                Fit warnings
+              </button>
+            </div>
+          </div>
+          <div class="warnings-map-shell">
+            <div class="warnings-map-layers" aria-label="Map layer controls">
+              <button type="button" class="warnings-layer-btn warnings-layer-btn--active" data-layer="street">
+                Default
+              </button>
+              <button type="button" class="warnings-layer-btn" data-layer="dark">Dark mode</button>
+              <button type="button" class="warnings-layer-btn" data-layer="satellite">Satellite</button>
+            </div>
+            <div id="warnings-map" class="warnings-map" role="application" aria-label="Warnings map"></div>
+          </div>
+        </section>
+      </div>
+    </main>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="/js/nav.js"></script>
+    <script src="/js/warnings.js"></script>
+  </body>
+</html>

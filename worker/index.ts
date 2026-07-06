@@ -3,6 +3,7 @@ import { handleDbTest } from "./routes/db-test";
 import { handleGps } from "./routes/gps";
 import { handleHealth } from "./routes/health";
 import { handleOverlays } from "./routes/overlays";
+import { handleWarnings } from "./routes/warnings";
 import { handleWeather } from "./routes/weather";
 
 export interface Env {
@@ -35,6 +36,10 @@ export default {
 
     if (url.pathname.startsWith("/api/weather")) {
       return handleWeather(request, env);
+    }
+
+    if (url.pathname.startsWith("/api/warnings")) {
+      return handleWarnings(request, env);
     }
 
     if (url.pathname.startsWith("/api/overlay") || url.pathname.startsWith("/api/overlays")) {
