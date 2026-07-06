@@ -7,63 +7,67 @@
     <link rel="stylesheet" href="/css/overlay-gps-weather.css" />
   </head>
   <body class="overlay-body">
-    <div class="overlay" id="overlay-root" aria-live="polite">
-      <div class="overlay__status-row">
-        <span class="overlay__badge overlay__badge--muted" id="gps-status-badge">—</span>
-        <span class="overlay__device" id="device-name">HeartlandStormChaser</span>
+    <div class="overlay-stage" id="overlay-root" aria-live="polite">
+      <div class="overlay-bar" id="overlay-bar">
+        <div class="overlay-bar__accent" id="warning-accent" aria-hidden="true"></div>
+
+        <div class="overlay-bar__content">
+          <div class="overlay-bar__travel">
+            <div class="overlay-bar__route">
+              <span class="overlay-dot overlay-dot--solid" aria-hidden="true"></span>
+              <span class="overlay-bar__place" id="current-location">—</span>
+              <span class="overlay-arrow" aria-hidden="true">→</span>
+              <span class="overlay-dot overlay-dot--hollow" aria-hidden="true"></span>
+              <span class="overlay-bar__place" id="target-location">—</span>
+            </div>
+
+            <div class="overlay-bar__metrics overlay-bar__metrics--travel">
+              <div class="overlay-metric">
+                <span class="overlay-metric__label">SPEED</span>
+                <span class="overlay-metric__value" id="speed-value">0 MPH</span>
+              </div>
+              <div class="overlay-metric">
+                <span class="overlay-metric__label">DIR</span>
+                <span class="overlay-metric__value" id="direction-value">--</span>
+              </div>
+              <div class="overlay-metric">
+                <span class="overlay-metric__label">ETA</span>
+                <span class="overlay-metric__value" id="eta-value">--</span>
+              </div>
+            </div>
+          </div>
+
+          <div class="overlay-bar__weather">
+            <div class="overlay-bar__metrics overlay-bar__metrics--weather-top">
+              <div class="overlay-pill overlay-pill--temp">
+                <span class="overlay-metric__label">TEMP</span>
+                <span class="overlay-metric__value" id="temp-value">—</span>
+              </div>
+              <div class="overlay-pill">
+                <span class="overlay-metric__label">WIND</span>
+                <span class="overlay-metric__value" id="wind-value">—</span>
+              </div>
+            </div>
+
+            <div class="overlay-bar__metrics overlay-bar__metrics--weather-bottom">
+              <div class="overlay-metric">
+                <span class="overlay-metric__label">DP</span>
+                <span class="overlay-metric__value" id="dewpoint-value">—</span>
+              </div>
+              <div class="overlay-metric">
+                <span class="overlay-metric__label">PRESSURE</span>
+                <span class="overlay-metric__value" id="pressure-value">—</span>
+              </div>
+              <div class="overlay-metric">
+                <span class="overlay-metric__label">RH</span>
+                <span class="overlay-metric__value" id="humidity-value">—</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </div>
 
-      <div class="overlay__location" id="location-label">Loading…</div>
-
-      <div class="overlay__grid overlay__grid--gps">
-        <div class="overlay__item">
-          <span class="overlay__label">Lat</span>
-          <span class="overlay__value" id="latitude">—</span>
-        </div>
-        <div class="overlay__item">
-          <span class="overlay__label">Lon</span>
-          <span class="overlay__value" id="longitude">—</span>
-        </div>
-        <div class="overlay__item">
-          <span class="overlay__label">Speed</span>
-          <span class="overlay__value" id="speed">—</span>
-        </div>
-        <div class="overlay__item">
-          <span class="overlay__label">Heading</span>
-          <span class="overlay__value" id="heading">—</span>
-        </div>
-      </div>
-
-      <div class="overlay__weather">
-        <div class="overlay__weather-main">
-          <span class="overlay__temp" id="temperature">—</span>
-          <span class="overlay__conditions" id="conditions">—</span>
-        </div>
-        <div class="overlay__grid overlay__grid--weather">
-          <div class="overlay__item">
-            <span class="overlay__label">Dew</span>
-            <span class="overlay__value" id="dew-point">—</span>
-          </div>
-          <div class="overlay__item">
-            <span class="overlay__label">RH</span>
-            <span class="overlay__value" id="humidity">—</span>
-          </div>
-          <div class="overlay__item">
-            <span class="overlay__label">Wind</span>
-            <span class="overlay__value" id="wind">—</span>
-          </div>
-          <div class="overlay__item">
-            <span class="overlay__label">Gust</span>
-            <span class="overlay__value" id="wind-gusts">—</span>
-          </div>
-        </div>
-      </div>
-
-      <div class="overlay__footer">
-        <span id="last-update">Updated —</span>
-      </div>
-
-      <div class="overlay__empty overlay__empty--hidden" id="empty-state">
+      <div class="overlay-empty overlay-empty--hidden" id="empty-state">
         No Platform GPS Source Selected
       </div>
     </div>

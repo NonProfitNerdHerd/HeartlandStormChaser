@@ -1,10 +1,17 @@
 import { routeErrorResponse } from "../lib/db-errors";
 import { getPlatformSource } from "../lib/gps-platform";
 import {
+  filterAlertsByEventFilters,
   getAlertsWithinRadius,
   getWarningsSettings,
+  MAX_WARNINGS_RADIUS_MILES,
+  MIN_WARNINGS_RADIUS_MILES,
+  parseEventFiltersJson,
+  updateWarningsEventFilters,
   updateWarningsPollInterval,
+  updateWarningsRadius,
   WARNINGS_POLL_INTERVALS_SECONDS,
+  type EventFiltersMap,
 } from "../lib/nws-alerts";
 import type { Env } from "../index";
 
@@ -56,27 +63,69 @@ async function handleGetSettings(env: Env): Promise<Response> {
     ok: true,
     settings,
     allowed_poll_intervals_seconds: [...WARNINGS_POLL_INTERVALS_SECONDS],
+    min_radius_miles: MIN_WARNINGS_RADIUS_MILES,
+    max_radius_miles: MAX_WARNINGS_RADIUS_MILES,
   });
 }
 
 async function handlePutSettings(request: Request, env: Env): Promise<Response> {
-  let body: { poll_interval_seconds?: number };
+  let body: {
+    poll_interval_seconds?: number;
+    radius_miles?: number;
+    event_filters?: EventFiltersMap;
+  };
   try {
     body = await request.json();
   } catch {
     return errorResponse("Invalid JSON body");
   }
 
-  const pollIntervalSeconds = body.poll_interval_seconds;
-  if (pollIntervalSeconds == null || Number.isNaN(Number(pollIntervalSeconds))) {
-    return errorResponse("poll_interval_seconds is required");
+  const hasPollInterval = body.poll_interval_seconds != null;
+  const hasRadius = body.radius_miles != null;
+  const hasEventFilters = body.event_filters != null;
+  if (!hasPollInterval && !hasRadius && !hasEventFilters) {
+    return errorResponse("poll_interval_seconds, radius_miles, or event_filters is required");
   }
 
-  const settings = await updateWarningsPollInterval(env, Number(pollIntervalSeconds));
+  if (hasPollInterval && Number.isNaN(Number(body.poll_interval_seconds))) {
+    return errorResponse("poll_interval_seconds must be a valid number");
+  }
+
+  if (hasRadius && Number.isNaN(Number(body.radius_miles))) {
+    return errorResponse("radius_miles must be a valid number");
+  }
+
+  if (hasEventFilters && (typeof body.event_filters !== "object" || Array.isArray(body.event_filters))) {
+    return errorResponse("event_filters must be an object");
+  }
+
+  let settings = await getWarningsSettings(env);
+
+  if (hasPollInterval) {
+    settings = await updateWarningsPollInterval(env, Number(body.poll_interval_seconds));
+  }
+
+  if (hasRadius) {
+    const radius = Math.min(
+      MAX_RADIUS_MILES,
+      Math.max(MIN_RADIUS_MILES, Number(body.radius_miles)),
+    );
+    settings = await updateWarningsRadius(env, radius);
+  }
+
+  if (hasEventFilters) {
+    settings = await updateWarningsEventFilters(
+      env,
+      parseEventFiltersJson(JSON.stringify(body.event_filters)),
+    );
+  }
+
   return json({
     ok: true,
     settings,
     allowed_poll_intervals_seconds: [...WARNINGS_POLL_INTERVALS_SECONDS],
+    min_radius_miles: MIN_WARNINGS_RADIUS_MILES,
+    max_radius_miles: MAX_WARNINGS_RADIUS_MILES,
   });
 }
 
@@ -124,12 +173,12 @@ async function handlePlatformWarnings(request: Request, env: Env): Promise<Respo
   const url = new URL(request.url);
 
   try {
-    const radiusMiles = parseRadiusMiles(url.searchParams.get("radius_miles"));
     const force = parseForceRefresh(url.searchParams.get("force"));
+    const settings = await getWarningsSettings(env);
+    const radiusMiles = settings.radius_miles;
     const platform = await getPlatformSource(env);
 
     if (!platform?.location) {
-      const settings = await getWarningsSettings(env);
       return json({
         ok: true,
         platform: platform
@@ -157,6 +206,7 @@ async function handlePlatformWarnings(request: Request, env: Env): Promise<Respo
       radiusMiles,
       { force },
     );
+    const alerts = filterAlertsByEventFilters(result.alerts, settings.event_filters);
 
     return json({
       ok: true,
@@ -171,11 +221,11 @@ async function handlePlatformWarnings(request: Request, env: Env): Promise<Respo
         longitude: platform.longitude,
         radius_miles: radiusMiles,
       },
-      alerts: result.alerts,
-      alert_count: result.alerts.length,
+      alerts,
+      alert_count: alerts.length,
       fetched_at: result.fetched_at,
       from_cache: result.from_cache,
-      settings: result.settings,
+      settings,
     });
   } catch (error) {
     const message = error instanceof Error ? error.message : "Warnings fetch failed";

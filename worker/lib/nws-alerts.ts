@@ -26,6 +26,7 @@ export interface NormalizedAlert {
   description: string;
   instruction: string | null;
   area_desc: string;
+  area_label: string;
   sender_name: string;
   sent: string;
   effective: string;
@@ -34,6 +35,7 @@ export interface NormalizedAlert {
   ends: string | null;
   distance_miles: number;
   severity_rank: number;
+  event_priority_rank: number;
   color: string;
   geometry: GeoJsonGeometry | null;
   source: "nws";
@@ -49,6 +51,7 @@ interface StoredNwsAlert {
   description: string;
   instruction: string | null;
   area_desc: string;
+  area_label: string;
   sender_name: string;
   sent: string;
   effective: string;
@@ -72,18 +75,36 @@ interface NwsAlertsResponse {
   features?: NwsAlertFeature[];
 }
 
+export type EventFiltersMap = Record<string, boolean>;
+
 interface WarningsCacheRow {
   id: string;
   alerts_json: string;
   fetched_at: string | null;
   poll_interval_seconds: number;
+  radius_miles: number;
+  event_filters_json: string;
 }
 
 export interface WarningsSettings {
   poll_interval_seconds: number;
+  radius_miles: number;
+  event_filters: EventFiltersMap;
   fetched_at: string | null;
   next_refresh_at: string | null;
   cached_alert_count: number;
+}
+
+export const DEFAULT_WARNINGS_RADIUS_MILES = 700;
+export const MIN_WARNINGS_RADIUS_MILES = 5;
+export const MAX_WARNINGS_RADIUS_MILES = 1000;
+export const ALERT_EXPIRE_GRACE_MS = 60 * 1000;
+
+function normalizeRadiusMiles(value: number): number {
+  return Math.min(
+    MAX_WARNINGS_RADIUS_MILES,
+    Math.max(MIN_WARNINGS_RADIUS_MILES, Math.round(value)),
+  );
 }
 
 const geometryCache = new Map<string, GeoJsonGeometry | null>();
@@ -120,6 +141,52 @@ const URGENCY_RANK: Record<string, number> = {
   Unknown: 4,
 };
 
+const EVENT_TYPE_RANK: Record<string, number> = {
+  "Tornado Warning": 0,
+  "Severe Thunderstorm Warning": 1,
+  "Flash Flood Warning": 2,
+  "Tornado Watch": 3,
+  "Severe Thunderstorm Watch": 4,
+  "Flash Flood Watch": 5,
+  "Flood Warning": 6,
+  "Flood Watch": 7,
+  "Winter Storm Warning": 8,
+  "Blizzard Warning": 9,
+  "High Wind Warning": 10,
+  "Dust Storm Warning": 11,
+  "Special Weather Statement": 12,
+};
+
+export function eventTypeRank(event: string): number {
+  return EVENT_TYPE_RANK[event] ?? 100;
+}
+
+export function parseEventFiltersJson(json: string | null | undefined): EventFiltersMap {
+  try {
+    const parsed = JSON.parse(json || "{}") as EventFiltersMap;
+    if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+      return parsed;
+    }
+  } catch {
+    // Fall through to empty filters.
+  }
+  return {};
+}
+
+export function isEventEnabledInFilters(filters: EventFiltersMap, event: string): boolean {
+  if (Object.prototype.hasOwnProperty.call(filters, event)) {
+    return filters[event] !== false;
+  }
+  return true;
+}
+
+export function filterAlertsByEventFilters(
+  alerts: NormalizedAlert[],
+  filters: EventFiltersMap,
+): NormalizedAlert[] {
+  return alerts.filter((alert) => isEventEnabledInFilters(filters, alert.event));
+}
+
 function normalizePollIntervalSeconds(value: number): number {
   if (!WARNINGS_POLL_INTERVALS_SECONDS.includes(value as (typeof WARNINGS_POLL_INTERVALS_SECONDS)[number])) {
     return DEFAULT_WARNINGS_POLL_INTERVAL_SECONDS;
@@ -135,6 +202,22 @@ function parseUtcTimestamp(value: string | null | undefined): number | null {
   const withZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized) ? normalized : `${normalized}Z`;
   const parsed = Date.parse(withZone);
   return Number.isNaN(parsed) ? null : parsed;
+}
+
+function getAlertExpiresAt(alert: { expires: string; ends: string | null }): string | null {
+  return alert.ends || alert.expires || null;
+}
+
+export function isAlertActive(
+  alert: { expires: string; ends: string | null },
+  nowMs: number = Date.now(),
+): boolean {
+  const expiresAt = parseUtcTimestamp(getAlertExpiresAt(alert));
+  if (expiresAt == null) {
+    return true;
+  }
+
+  return nowMs < expiresAt + ALERT_EXPIRE_GRACE_MS;
 }
 
 async function nwsFetch(url: string): Promise<Response> {
@@ -158,6 +241,34 @@ function readNullableString(value: unknown): string | null {
   return typeof value === "string" && value.trim() ? value : null;
 }
 
+function readUgcCodes(properties: Record<string, unknown>): string[] {
+  const geocode = properties.geocode;
+  if (!geocode || typeof geocode !== "object") {
+    return [];
+  }
+
+  const ugc = (geocode as Record<string, unknown>).UGC;
+  if (!Array.isArray(ugc)) {
+    return [];
+  }
+
+  return ugc.filter((code): code is string => typeof code === "string" && code.length >= 2);
+}
+
+function formatAreaLabel(areaDesc: string, ugcCodes: string[]): string {
+  const state = ugcCodes[0]?.slice(0, 2).toUpperCase() ?? "";
+  let location = (areaDesc.split(";")[0] ?? areaDesc).trim();
+  location = location.replace(/,\s*[A-Z]{2}$/i, "").replace(/\s+County$/i, "").trim();
+
+  if (state && location) {
+    return `${state}-${location}`;
+  }
+  if (state) {
+    return state;
+  }
+  return location || "Affected area";
+}
+
 function severityRank(severity: string, urgency: string): number {
   const severityScore = (SEVERITY_RANK[severity] ?? 99) * 10;
   const urgencyScore = URGENCY_RANK[urgency] ?? 99;
@@ -165,6 +276,9 @@ function severityRank(severity: string, urgency: string): number {
 }
 
 function compareAlerts(a: NormalizedAlert, b: NormalizedAlert): number {
+  if (a.event_priority_rank !== b.event_priority_rank) {
+    return a.event_priority_rank - b.event_priority_rank;
+  }
   if (a.severity_rank !== b.severity_rank) {
     return a.severity_rank - b.severity_rank;
   }
@@ -176,7 +290,7 @@ function compareAlerts(a: NormalizedAlert, b: NormalizedAlert): number {
 
 async function readWarningsCacheRow(env: Env): Promise<WarningsCacheRow> {
   const row = await env.DB.prepare(
-    `SELECT id, alerts_json, fetched_at, poll_interval_seconds
+    `SELECT id, alerts_json, fetched_at, poll_interval_seconds, radius_miles, event_filters_json
      FROM warnings_cache
      WHERE id = ?`,
   )
@@ -189,10 +303,18 @@ async function readWarningsCacheRow(env: Env): Promise<WarningsCacheRow> {
       alerts_json: "[]",
       fetched_at: null,
       poll_interval_seconds: DEFAULT_WARNINGS_POLL_INTERVAL_SECONDS,
+      radius_miles: DEFAULT_WARNINGS_RADIUS_MILES,
+      event_filters_json: "{}",
     };
   }
 
-  return row;
+  return {
+    ...row,
+    radius_miles: normalizeRadiusMiles(
+      row.radius_miles ?? DEFAULT_WARNINGS_RADIUS_MILES,
+    ),
+    event_filters_json: row.event_filters_json ?? "{}",
+  };
 }
 
 function parseStoredAlerts(alertsJson: string): StoredNwsAlert[] {
@@ -220,6 +342,8 @@ function buildSettings(row: WarningsCacheRow): WarningsSettings {
 
   return {
     poll_interval_seconds: row.poll_interval_seconds,
+    radius_miles: row.radius_miles,
+    event_filters: parseEventFiltersJson(row.event_filters_json),
     fetched_at: row.fetched_at,
     next_refresh_at:
       nextRefreshMs === null ? null : new Date(nextRefreshMs).toISOString(),
@@ -239,11 +363,50 @@ export async function updateWarningsPollInterval(
   const normalized = normalizePollIntervalSeconds(pollIntervalSeconds);
 
   await env.DB.prepare(
-    `INSERT INTO warnings_cache (id, alerts_json, fetched_at, poll_interval_seconds)
-     VALUES (?, '[]', NULL, ?)
+    `INSERT INTO warnings_cache (id, alerts_json, fetched_at, poll_interval_seconds, radius_miles)
+     VALUES (?, '[]', NULL, ?, ?)
      ON CONFLICT(id) DO UPDATE SET poll_interval_seconds = excluded.poll_interval_seconds`,
   )
-    .bind(WARNINGS_CACHE_ID, normalized)
+    .bind(WARNINGS_CACHE_ID, normalized, DEFAULT_WARNINGS_RADIUS_MILES)
+    .run();
+
+  return getWarningsSettings(env);
+}
+
+export async function updateWarningsRadius(
+  env: Env,
+  radiusMiles: number,
+): Promise<WarningsSettings> {
+  const normalized = normalizeRadiusMiles(radiusMiles);
+
+  await env.DB.prepare(
+    `INSERT INTO warnings_cache (id, alerts_json, fetched_at, poll_interval_seconds, radius_miles)
+     VALUES (?, '[]', NULL, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET radius_miles = excluded.radius_miles`,
+  )
+    .bind(WARNINGS_CACHE_ID, DEFAULT_WARNINGS_POLL_INTERVAL_SECONDS, normalized)
+    .run();
+
+  return getWarningsSettings(env);
+}
+
+export async function updateWarningsEventFilters(
+  env: Env,
+  eventFilters: EventFiltersMap,
+): Promise<WarningsSettings> {
+  const normalized = parseEventFiltersJson(JSON.stringify(eventFilters));
+
+  await env.DB.prepare(
+    `INSERT INTO warnings_cache (id, alerts_json, fetched_at, poll_interval_seconds, radius_miles, event_filters_json)
+     VALUES (?, '[]', NULL, ?, ?, ?)
+     ON CONFLICT(id) DO UPDATE SET event_filters_json = excluded.event_filters_json`,
+  )
+    .bind(
+      WARNINGS_CACHE_ID,
+      DEFAULT_WARNINGS_POLL_INTERVAL_SECONDS,
+      DEFAULT_WARNINGS_RADIUS_MILES,
+      JSON.stringify(normalized),
+    )
     .run();
 
   return getWarningsSettings(env);
@@ -353,6 +516,9 @@ async function buildStoredAlertsFromNws(): Promise<StoredNwsAlert[]> {
         readString(properties["@id"]) ||
         `${event}-${readString(properties.sent)}`;
 
+      const areaDesc = readString(properties.areaDesc);
+      const areaLabel = formatAreaLabel(areaDesc, readUgcCodes(properties));
+
       const alert: StoredNwsAlert = {
         id,
         event,
@@ -362,7 +528,8 @@ async function buildStoredAlertsFromNws(): Promise<StoredNwsAlert[]> {
         headline: readString(properties.headline),
         description: readString(properties.description),
         instruction: readNullableString(properties.instruction),
-        area_desc: readString(properties.areaDesc),
+        area_desc: areaDesc,
+        area_label: areaLabel,
         sender_name: readString(properties.senderName),
         sent: readString(properties.sent),
         effective: readString(properties.effective),
@@ -380,7 +547,7 @@ async function buildStoredAlertsFromNws(): Promise<StoredNwsAlert[]> {
     .filter((alert): alert is StoredNwsAlert => alert != null);
 }
 
-async function getOrRefreshCachedAlerts(
+export async function getOrRefreshCachedAlerts(
   env: Env,
   options: { force?: boolean } = {},
 ): Promise<{ alerts: StoredNwsAlert[]; fetched_at: string; from_cache: boolean; settings: WarningsSettings }> {
@@ -436,6 +603,7 @@ export async function getAlertsWithinRadius(
   const box = boundingBox(latitude, longitude, radiusMiles);
 
   const alerts = cached.alerts
+    .filter((stored) => isAlertActive(stored))
     .map((stored) => {
       if (!stored.geometry || !geometryIntersectsBoundingBox(stored.geometry, box)) {
         return null;
@@ -449,6 +617,7 @@ export async function getAlertsWithinRadius(
       const alert: NormalizedAlert = {
         ...stored,
         distance_miles: Math.round(distanceMiles * 10) / 10,
+        event_priority_rank: eventTypeRank(stored.event),
       };
       return alert;
     })

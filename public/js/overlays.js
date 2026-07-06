@@ -20,18 +20,22 @@
       label: "Chase status",
       title: "Scrolling status ticker",
       description:
-        "Horizontal ticker using overlay status text from the Android Overlays tab. Coming soon.",
-      path: null,
-      status: "coming-soon",
+        "Right-to-left scrolling ticker using status text from the Android Overlays tab. Line breaks become dot-separated items.",
+      path: "/overlays/ticker.html",
+      previewQuery: "preview=1",
+      status: "live",
+      previewHeight: 72,
     },
     {
-      id: "weather-widget",
-      label: "Weather",
-      title: "Standalone weather widget",
+      id: "warnings-bar",
+      label: "Warnings",
+      title: "Active NWS warning bar",
       description:
-        "Compact weather-only overlay for the platform GPS location. Coming soon.",
-      path: null,
-      status: "coming-soon",
+        "Two-row warning banner for the highest-priority NWS alert near platform GPS, using the same colors as the Warnings page.",
+      path: "/overlays/warnings.html",
+      previewQuery: "preview=1",
+      status: "live",
+      previewHeight: 96,
     },
   ];
 

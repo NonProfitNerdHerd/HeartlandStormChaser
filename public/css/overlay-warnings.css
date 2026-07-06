@@ -1,0 +1,195 @@
+/* OBS NWS warnings bar overlay */
+
+:root {
+  --warnings-font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --warnings-text: #ffffff;
+  --warnings-shadow: 0 1px 3px rgb(0 0 0 / 0.85);
+  --warnings-detail-speed: 24s;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+}
+
+body.overlay-body--preview {
+  background: #1f2937;
+}
+
+body.overlay-body--preview.overlay-body--empty {
+  background: transparent;
+}
+
+.overlay-body {
+  min-height: 100vh;
+  font-family: var(--warnings-font);
+  color: var(--warnings-text);
+}
+
+.warnings-stage {
+  width: 100vw;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+}
+
+.warnings-stage--hidden {
+  display: none;
+}
+
+.warnings-bar {
+  width: 100%;
+  display: grid;
+  grid-template-columns: minmax(12rem, 22%) 1fr;
+  grid-template-rows: auto auto;
+  overflow: hidden;
+}
+
+.warnings-row {
+  display: contents;
+}
+
+.warnings-cell {
+  display: flex;
+  align-items: center;
+  min-height: 2.35rem;
+  padding: 0.45rem 0.85rem;
+  font-size: 0.95rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.03em;
+  text-transform: uppercase;
+  overflow: hidden;
+}
+
+.warnings-cell--event,
+.warnings-cell--until {
+  color: var(--warnings-text);
+  white-space: nowrap;
+  text-overflow: ellipsis;
+  text-shadow: var(--warnings-shadow);
+}
+
+.warnings-cell--until {
+  padding-top: 0.15rem;
+  padding-bottom: 0.15rem;
+  min-height: 1.85rem;
+  font-size: 1.15rem;
+  line-height: 1.05;
+}
+
+.warnings-cell--expires {
+  gap: 0.55rem;
+  color: var(--warnings-text);
+  white-space: nowrap;
+}
+
+.warnings-new-badge {
+  flex: 0 0 auto;
+  padding: 0.12rem 0.38rem;
+  border-radius: 2px;
+  background: #ffcc00;
+  color: #000000;
+  font-size: 0.72rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  line-height: 1.1;
+}
+
+.warnings-expires-text {
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.warnings-cell--detail {
+  padding: 0;
+  overflow: hidden;
+  align-items: stretch;
+}
+
+.warnings-detail-viewport {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  padding: 0;
+}
+
+.warnings-detail-track {
+  display: flex;
+  width: max-content;
+  animation: warnings-detail-scroll var(--warnings-detail-speed) linear infinite;
+  will-change: transform;
+}
+
+.warnings-detail-run {
+  display: inline-flex;
+  align-items: center;
+  padding: 0 2rem 0 0.85rem;
+  white-space: nowrap;
+  color: var(--warnings-text);
+  font-size: 1.05rem;
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: 0.01em;
+  text-transform: none;
+  text-shadow: var(--warnings-shadow);
+}
+
+.warnings-bar--enter .warnings-cell {
+  animation: warnings-slide-up 0.5s ease-out;
+}
+
+@keyframes warnings-detail-scroll {
+  from {
+    transform: translateX(0);
+  }
+
+  to {
+    transform: translateX(-50%);
+  }
+}
+
+@keyframes warnings-slide-up {
+  from {
+    transform: translateY(100%);
+    opacity: 0;
+  }
+
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@media (max-width: 900px) {
+  .warnings-bar {
+    grid-template-columns: minmax(9rem, 34%) 1fr;
+  }
+
+  .warnings-cell {
+    min-height: 2rem;
+    padding: 0.4rem 0.6rem;
+    font-size: 0.8rem;
+  }
+
+  .warnings-cell--until {
+    padding-top: 0.12rem;
+    padding-bottom: 0.12rem;
+    min-height: 1.55rem;
+    font-size: 0.98rem;
+  }
+
+  .warnings-detail-run {
+    font-size: 0.9rem;
+  }
+}

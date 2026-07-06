@@ -12,7 +12,7 @@
     <link rel="stylesheet" href="/css/components.css" />
     <link rel="stylesheet" href="/css/chasers-streams.css" />
   </head>
-  <body data-page="chasers-streams">
+  <body data-page="chasers-streams" class="chasers-body">
     <header class="site-header">
       <div class="site-header__inner">
         <a class="site-logo" href="/">HeartlandStormChaser</a>
@@ -30,7 +30,7 @@
       </div>
     </header>
 
-    <main class="site-main site-main--wide">
+    <main class="site-main site-main--wide chasers-main">
       <div class="chasers-toolbar">
         <div class="chasers-toolbar__status">
           <span id="refresh-status" class="chasers-toolbar__text">Live status not checked yet.</span>
@@ -48,62 +48,97 @@
       <div class="chasers-layout">
         <aside class="stream-admin" aria-label="Stream admin">
           <div class="stream-admin__panel">
-            <h2 class="stream-admin__title" id="form-title">Add stream</h2>
-            <form id="stream-form" class="stream-form">
-              <input type="hidden" id="source-id" name="source_id" value="" />
-              <div class="form-field">
-                <label for="display-name">Display name</label>
-                <input
-                  id="display-name"
-                  name="display_name"
-                  type="text"
-                  required
-                  placeholder="e.g. Ike Chase Cam"
-                />
-              </div>
-              <div class="form-field">
-                <label for="channel-id">YouTube channel ID</label>
-                <input
-                  id="channel-id"
-                  name="channel_id"
-                  type="text"
-                  required
-                  placeholder="UCqSk-ojoH2rgAuYadPLJgJA"
-                  pattern="UC[\w-]{22}"
-                  spellcheck="false"
-                />
-                <small class="form-hint"
-                  >Paste the UC… ID from the channel page (starts with UC, 24 characters).</small
-                >
-              </div>
-              <div class="form-field">
-                <label for="notes">Notes</label>
-                <textarea id="notes" name="notes" placeholder="Optional notes"></textarea>
-              </div>
-              <div class="form-field form-field--checkbox">
-                <input id="enabled" name="enabled" type="checkbox" checked />
-                <label for="enabled">Enabled</label>
-              </div>
-              <p id="form-message" class="form-message" role="status" hidden></p>
-              <div class="form-actions">
-                <button type="submit" class="btn btn--primary" id="form-submit">Save stream</button>
-                <button type="button" class="btn btn--secondary" id="form-cancel" hidden>
-                  Cancel edit
-                </button>
-              </div>
-            </form>
-          </div>
+            <div class="stream-admin__tabs" role="tablist" aria-label="Stream admin sections">
+              <button
+                type="button"
+                class="stream-admin__tab stream-admin__tab--active"
+                id="tab-streamers"
+                role="tab"
+                aria-selected="true"
+                aria-controls="panel-streamers"
+              >
+                All streamers
+              </button>
+              <button
+                type="button"
+                class="stream-admin__tab"
+                id="tab-add-stream"
+                role="tab"
+                aria-selected="false"
+                aria-controls="panel-add-stream"
+                tabindex="-1"
+              >
+                Add stream
+              </button>
+            </div>
 
-          <div class="stream-admin__panel stream-list-panel">
-            <h2 class="stream-admin__title">All streamers</h2>
-            <div id="stream-list" class="stream-list">
-              <p class="stream-list__empty">Loading streamers…</p>
+            <div
+              class="stream-admin__tab-panel stream-admin__tab-panel--active"
+              id="panel-streamers"
+              role="tabpanel"
+              aria-labelledby="tab-streamers"
+            >
+              <div id="stream-list" class="stream-list">
+                <p class="stream-list__empty">Loading streamers…</p>
+              </div>
+            </div>
+
+            <div
+              class="stream-admin__tab-panel"
+              id="panel-add-stream"
+              role="tabpanel"
+              aria-labelledby="tab-add-stream"
+              hidden
+            >
+              <h2 class="stream-admin__title" id="form-title">Add stream</h2>
+              <form id="stream-form" class="stream-form">
+                <input type="hidden" id="source-id" name="source_id" value="" />
+                <div class="form-field">
+                  <label for="display-name">Display name</label>
+                  <input
+                    id="display-name"
+                    name="display_name"
+                    type="text"
+                    required
+                    placeholder="e.g. Ike Chase Cam"
+                  />
+                </div>
+                <div class="form-field">
+                  <label for="channel-id">YouTube channel ID</label>
+                  <input
+                    id="channel-id"
+                    name="channel_id"
+                    type="text"
+                    required
+                    placeholder="UCqSk-ojoH2rgAuYadPLJgJA"
+                    pattern="UC[\w-]{22}"
+                    spellcheck="false"
+                  />
+                  <small class="form-hint"
+                    >Paste the UC… ID from the channel page (starts with UC, 24 characters).</small
+                  >
+                </div>
+                <div class="form-field">
+                  <label for="notes">Notes</label>
+                  <textarea id="notes" name="notes" placeholder="Optional notes"></textarea>
+                </div>
+                <div class="form-field form-field--checkbox">
+                  <input id="enabled" name="enabled" type="checkbox" checked />
+                  <label for="enabled">Enabled</label>
+                </div>
+                <p id="form-message" class="form-message" role="status" hidden></p>
+                <div class="form-actions">
+                  <button type="submit" class="btn btn--primary" id="form-submit">Save stream</button>
+                  <button type="button" class="btn btn--secondary" id="form-cancel" hidden>
+                    Cancel edit
+                  </button>
+                </div>
+              </form>
             </div>
           </div>
         </aside>
 
         <section class="quad-view" aria-label="Quad view">
-          <h2 class="quad-view__title">Quad view</h2>
           <div id="quad-grid" class="quad-grid"></div>
         </section>
       </div>

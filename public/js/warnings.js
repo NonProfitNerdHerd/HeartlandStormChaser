@@ -1,5 +1,7 @@
 ﻿(function () {
   var DEFAULT_RADIUS = 700;
+  var RADIUS_STORAGE_KEY = "warnings-radius-miles";
+  var ALLOWED_RADIUS_VALUES = [25, 50, 100, 200, 350, 500, 700, 1000];
   var DEFAULT_POLL_INTERVAL_SECONDS = 3600;
   var FILTER_STORAGE_KEY = "warnings-event-filters";
   var LABELS_STORAGE_KEY = "warnings-map-labels";
@@ -61,6 +63,8 @@
   var currentPollIntervalSeconds = DEFAULT_POLL_INTERVAL_SECONDS;
   var selectedAlertId = null;
   var latestData = null;
+  var seenAlertIds = Object.create(null);
+  var alertsInitialized = false;
   var eventFilters = loadEventFilters();
   var labelSettings = loadLabelSettings();
 
@@ -81,6 +85,56 @@
     return date.toLocaleString();
   }
 
+  function formatMetaTimestamp(value) {
+    if (!value) return "—";
+    var normalized = value.includes("T") ? value : value.replace(" ", "T");
+    var withZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized) ? normalized : normalized + "Z";
+    var date = new Date(withZone);
+    if (Number.isNaN(date.getTime())) return value;
+    return date
+      .toLocaleString(undefined, {
+        month: "numeric",
+        day: "numeric",
+        year: "numeric",
+        hour: "numeric",
+        minute: "2-digit",
+        second: "2-digit",
+        hour12: true,
+      })
+      .replace(/,\s+/, " ");
+  }
+
+  function loadRadiusMiles() {
+    try {
+      var stored = Number(localStorage.getItem(RADIUS_STORAGE_KEY));
+      if (ALLOWED_RADIUS_VALUES.indexOf(stored) !== -1) return stored;
+    } catch (_error) {
+      // Ignore storage errors.
+    }
+    return DEFAULT_RADIUS;
+  }
+
+  function saveRadiusMiles(value) {
+    localStorage.setItem(RADIUS_STORAGE_KEY, String(value));
+  }
+
+  function syncRadiusSelect() {
+    if (!radiusSelect) return;
+    radiusSelect.value = String(loadRadiusMiles());
+  }
+
+  function formatAreaLabel(areaDesc, areaLabel) {
+    if (areaLabel) return areaLabel;
+    if (!areaDesc) return "Affected area";
+    var first = areaDesc.split(";")[0].trim();
+    var stateMatch = first.match(/^(.+?),\s*([A-Z]{2})$/i);
+    if (stateMatch) {
+      return stateMatch[2].toUpperCase() + "-" + stateMatch[1].replace(/\s+County$/i, "").trim();
+    }
+    var location = first.replace(/\s+County$/i, "").trim();
+    return location || "Affected area";
+  }
+
   function loadEventFilters() {
     try {
       var stored = localStorage.getItem(FILTER_STORAGE_KEY);
@@ -90,8 +144,20 @@
     }
   }
 
-  function saveEventFilters() {
+  function persistEventFilters() {
     localStorage.setItem(FILTER_STORAGE_KEY, JSON.stringify(eventFilters));
+  }
+
+  function saveEventFilters() {
+    persistEventFilters();
+  }
+
+  function readFiltersFromDialog() {
+    filterList.querySelectorAll("input[data-event]").forEach(function (input) {
+      var event = input.getAttribute("data-event");
+      if (event) eventFilters[event] = input.checked;
+    });
+    persistEventFilters();
   }
 
   function loadLabelSettings() {
@@ -116,6 +182,9 @@
 
   function getVisibleAlerts(alerts) {
     return (alerts || []).filter(function (alert) { return isEventEnabled(alert.event); }).slice().sort(function (a, b) {
+      var aEventRank = a.event_priority_rank != null ? a.event_priority_rank : 100;
+      var bEventRank = b.event_priority_rank != null ? b.event_priority_rank : 100;
+      if (aEventRank !== bEventRank) return aEventRank - bEventRank;
       if (a.severity_rank !== b.severity_rank) return a.severity_rank - b.severity_rank;
       if (a.distance_miles !== b.distance_miles) return a.distance_miles - b.distance_miles;
       return a.event.localeCompare(b.event);
@@ -255,7 +324,7 @@
   }
 
   function renderAlertCard(alert) {
-    var areaLabel = alert.area_desc || "Affected area";
+    var areaLabel = formatAreaLabel(alert.area_desc, alert.area_label);
     if (areaLabel.length > 72) areaLabel = areaLabel.slice(0, 69) + "…";
     return '<button type="button" class="warnings-card' + (selectedAlertId === alert.id ? " warnings-card--selected" : "") + '" data-alert-id="' + escapeHtml(alert.id) + '"><div class="warnings-card__banner" style="background:' + escapeHtml(alert.color) + '">' + escapeHtml(alert.event) + '</div><div class="warnings-card__body"><p class="warnings-card__severity">' + escapeHtml(alert.severity) + " · " + escapeHtml(alert.urgency) + '</p><p class="warnings-card__distance">' + escapeHtml(String(alert.distance_miles)) + ' mi</p><p class="warnings-card__area">' + escapeHtml(areaLabel) + '</p><div class="warnings-card__meta"><span>Issued: ' + escapeHtml(formatTimestamp(alert.sent || alert.effective)) + '</span><span>Expires: ' + escapeHtml(formatTimestamp(alert.expires || alert.ends)) + "</span></div></div></button>";
   }
@@ -306,26 +375,14 @@
 
   function updateMonitorMeta(data, errorMessage) {
     if (errorMessage) { monitorMeta.textContent = errorMessage; return; }
-    var platform = data.platform;
-    var query = data.query;
-    var settings = data.settings || {};
     var visibleCount = getVisibleAlerts(data.alerts || []).length;
     var totalCount = (data.alerts || []).length;
-    var gpsLabel = platform?.status === "LIVE" ? "GPS live" : platform?.status === "STALE" ? "GPS stale" : "GPS unavailable";
-    var pollLabel = formatPollInterval(settings.poll_interval_seconds || currentPollIntervalSeconds);
-    var nextRefresh = settings.next_refresh_at ? formatTimestamp(settings.next_refresh_at) : "pending first fetch";
     monitorMeta.textContent =
-      "Status: Monitoring · " +
-      gpsLabel +
-      " · NWS fetched: " +
-      formatTimestamp(data.fetched_at || settings.fetched_at) +
-      " · Server poll: " +
-      pollLabel +
-      " · Next NWS refresh: " +
-      nextRefresh +
-      " · Radius " +
-      (query?.radius_miles || getRadiusMiles()) +
-      " mi · Showing " +
+      "Fetched " +
+      formatMetaTimestamp(data.fetched_at || data.settings?.fetched_at) +
+      " - Radius " +
+      getRadiusMiles() +
+      " mi - Showing " +
       visibleCount +
       " of " +
       totalCount +
@@ -334,8 +391,61 @@
 
   function renderFilterDialog() {
     filterList.innerHTML = collectEventTypes(latestData?.alerts || []).map(function (event) {
-      return '<label class="warnings-filter-item"><input type="checkbox" data-event="' + escapeHtml(event) + '"' + (isEventEnabled(event) ? " checked" : "") + " /><span>" + escapeHtml(event) + "</span></label>";
+      var playButton = "";
+      if (window.WarningSounds && window.WarningSounds.hasWarningSound(event)) {
+        playButton =
+          '<button type="button" class="warnings-filter-play" data-sound-event="' +
+          escapeHtml(event) +
+          '" aria-label="Play sound for ' +
+          escapeHtml(event) +
+          '" title="Test alert sound">&#9654;</button>';
+      }
+
+      return (
+        '<div class="warnings-filter-item">' +
+        '<label class="warnings-filter-item__label">' +
+        '<input type="checkbox" data-event="' +
+        escapeHtml(event) +
+        '"' +
+        (isEventEnabled(event) ? " checked" : "") +
+        " /><span>" +
+        escapeHtml(event) +
+        "</span></label>" +
+        playButton +
+        "</div>"
+      );
     }).join("");
+  }
+
+  function noteNewAlertsOnPage(alerts) {
+    if (!alertsInitialized) {
+      (alerts || []).forEach(function (alert) {
+        if (alert?.id) {
+          seenAlertIds[alert.id] = true;
+        }
+      });
+      alertsInitialized = true;
+      return;
+    }
+
+    var newAlerts = (alerts || []).filter(function (alert) {
+      return alert?.id && !seenAlertIds[alert.id] && isEventEnabled(alert.event);
+    });
+
+    newAlerts.forEach(function (alert) {
+      seenAlertIds[alert.id] = true;
+    });
+
+    if (!newAlerts.length || !window.WarningSounds) {
+      return;
+    }
+
+    for (var i = 0; i < newAlerts.length; i++) {
+      if (window.WarningSounds.hasWarningSound(newAlerts[i].event)) {
+        window.WarningSounds.playWarningSound(newAlerts[i].event);
+        return;
+      }
+    }
   }
 
   function syncPollIntervalSelect(seconds) {
@@ -349,14 +459,52 @@
     pollTimer = setInterval(function () { refreshWarnings(); }, intervalMs);
   }
 
+  async function syncRadiusToServer(radiusMiles) {
+    await api("/api/warnings/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ radius_miles: radiusMiles }),
+    });
+  }
+
+  async function syncEventFiltersToServer(filters) {
+    await api("/api/warnings/settings", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ event_filters: filters || {} }),
+    });
+  }
+
+  function filtersMatch(a, b) {
+    return JSON.stringify(a || {}) === JSON.stringify(b || {});
+  }
+
   async function loadWarningsSettings() {
     try {
       var data = await api("/api/warnings/settings");
+      var localRadius = loadRadiusMiles();
+      var localFilters = loadEventFilters();
+
       if (data.settings?.poll_interval_seconds) {
         currentPollIntervalSeconds = data.settings.poll_interval_seconds;
         syncPollIntervalSelect(currentPollIntervalSeconds);
         schedulePolling();
       }
+
+      if (data.settings?.radius_miles != null && localRadius !== data.settings.radius_miles) {
+        await syncRadiusToServer(localRadius);
+      } else if (data.settings?.radius_miles != null) {
+        saveRadiusMiles(data.settings.radius_miles);
+        syncRadiusSelect();
+      }
+
+      if (data.settings?.event_filters != null && !filtersMatch(localFilters, data.settings.event_filters)) {
+        await syncEventFiltersToServer(localFilters);
+      } else if (data.settings?.event_filters != null) {
+        eventFilters = data.settings.event_filters;
+        persistEventFilters();
+      }
+
       return data.settings;
     } catch (_error) {
       schedulePolling();
@@ -386,21 +534,49 @@
   }
 
   function applyFiltersFromDialog() {
-    filterList.querySelectorAll("input[data-event]").forEach(function (input) {
-      var event = input.getAttribute("data-event"); if (event) eventFilters[event] = input.checked;
-    });
-    saveEventFilters();
-    if (selectedAlertId) { var selected = findAlertById(selectedAlertId); if (!selected || !isEventEnabled(selected.event)) clearSelection(); }
+    readFiltersFromDialog();
+    if (selectedAlertId) {
+      var selected = findAlertById(selectedAlertId);
+      if (!selected || !isEventEnabled(selected.event)) clearSelection();
+    }
     renderCurrentAlerts();
   }
 
   async function applySettingsFromDialog() {
-    applyFiltersFromDialog();
+    readFiltersFromDialog();
+    if (selectedAlertId) {
+      var selected = findAlertById(selectedAlertId);
+      if (!selected || !isEventEnabled(selected.event)) clearSelection();
+    }
+
+    var putBody = { event_filters: eventFilters };
+    var nextInterval = Number(pollIntervalSelect?.value) || DEFAULT_POLL_INTERVAL_SECONDS;
+    if (nextInterval !== currentPollIntervalSeconds) {
+      putBody.poll_interval_seconds = nextInterval;
+    }
+
     try {
-      await savePollIntervalFromDialog();
-      if (latestData) refreshWarnings();
+      var data = await api("/api/warnings/settings", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(putBody),
+      });
+
+      if (data.settings?.poll_interval_seconds) {
+        currentPollIntervalSeconds = data.settings.poll_interval_seconds;
+        syncPollIntervalSelect(currentPollIntervalSeconds);
+        schedulePolling();
+      }
+
+      if (data.settings?.event_filters) {
+        eventFilters = data.settings.event_filters;
+        persistEventFilters();
+      }
+
+      await refreshWarnings();
     } catch (error) {
-      monitorMeta.textContent = error.message || "Unable to save polling settings.";
+      monitorMeta.textContent = error.message || "Unable to save warning settings.";
+      throw error;
     }
   }
 
@@ -418,13 +594,22 @@
   async function refreshWarnings(options) {
     monitorMeta.textContent = "Loading warnings…";
     try {
-      var forceQuery = options && options.force ? "&force=1" : "";
-      var data = await api("/api/warnings/platform?radius_miles=" + getRadiusMiles() + forceQuery);
+      var forceQuery = options && options.force ? "?force=1" : "";
+      var data = await api("/api/warnings/platform" + forceQuery);
       if (data.settings?.poll_interval_seconds) {
         currentPollIntervalSeconds = data.settings.poll_interval_seconds;
         syncPollIntervalSelect(currentPollIntervalSeconds);
       }
+      if (data.settings?.radius_miles != null) {
+        saveRadiusMiles(data.settings.radius_miles);
+        syncRadiusSelect();
+      }
+      if (data.settings?.event_filters) {
+        eventFilters = data.settings.event_filters;
+        persistEventFilters();
+      }
       latestData = data;
+      noteNewAlertsOnPage(data.alerts || []);
       var visibleAlerts = getVisibleAlerts(data.alerts || []);
       setGpsBadge(data.platform?.status || "UNKNOWN");
       setMonitorBadge(true, visibleAlerts.length);
@@ -448,11 +633,36 @@
     }
   }
 
-  radiusSelect.addEventListener("change", function () { clearSelection(); refreshWarnings({ fitMap: true }); });
+  radiusSelect.addEventListener("change", function () {
+    var radiusMiles = getRadiusMiles();
+    saveRadiusMiles(radiusMiles);
+    clearSelection();
+    syncRadiusToServer(radiusMiles)
+      .then(function () {
+        return refreshWarnings({ fitMap: true });
+      })
+      .catch(function (error) {
+        monitorMeta.textContent = error.message || "Unable to save radius setting.";
+      });
+  });
   if (filterBtn) filterBtn.addEventListener("click", openFilterDialog);
+  if (filterList) {
+    filterList.addEventListener("click", function (event) {
+      var playButton = event.target.closest("[data-sound-event]");
+      if (!playButton || !window.WarningSounds) {
+        return;
+      }
+
+      event.preventDefault();
+      event.stopPropagation();
+      window.WarningSounds.playWarningSound(playButton.getAttribute("data-sound-event"));
+    });
+  }
   if (filterForm) filterForm.addEventListener("submit", function (event) {
     event.preventDefault();
-    applySettingsFromDialog().finally(function () { if (filterDialog) filterDialog.close(); });
+    applySettingsFromDialog().then(function () {
+      if (filterDialog) filterDialog.close();
+    });
   });
   if (filterDialogClose) filterDialogClose.addEventListener("click", function () { if (filterDialog) filterDialog.close(); });
   if (filterEnableAll) filterEnableAll.addEventListener("click", function () { filterList.querySelectorAll("input[data-event]").forEach(function (input) { input.checked = true; }); });
@@ -480,6 +690,7 @@
   if (boundaryLinesToggle) boundaryLinesToggle.addEventListener("change", updateLabelSettingsFromControls);
 
   syncLabelControls();
+  syncRadiusSelect();
   initMap();
   setMapLayer("satellite");
   loadWarningsSettings().finally(function () {

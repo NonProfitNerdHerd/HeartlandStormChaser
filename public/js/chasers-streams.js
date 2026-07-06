@@ -21,6 +21,26 @@
   var refreshStatus = document.getElementById("refresh-status");
   var refreshLiveBtn = document.getElementById("refresh-live-btn");
   var refreshForceBtn = document.getElementById("refresh-live-force-btn");
+  var tabStreamers = document.getElementById("tab-streamers");
+  var tabAddStream = document.getElementById("tab-add-stream");
+  var panelStreamers = document.getElementById("panel-streamers");
+  var panelAddStream = document.getElementById("panel-add-stream");
+
+  function setAdminTab(tabName) {
+    var isStreamers = tabName === "streamers";
+
+    tabStreamers.classList.toggle("stream-admin__tab--active", isStreamers);
+    tabAddStream.classList.toggle("stream-admin__tab--active", !isStreamers);
+    tabStreamers.setAttribute("aria-selected", isStreamers ? "true" : "false");
+    tabAddStream.setAttribute("aria-selected", isStreamers ? "false" : "true");
+    tabStreamers.tabIndex = isStreamers ? 0 : -1;
+    tabAddStream.tabIndex = isStreamers ? -1 : 0;
+
+    panelStreamers.classList.toggle("stream-admin__tab-panel--active", isStreamers);
+    panelAddStream.classList.toggle("stream-admin__tab-panel--active", !isStreamers);
+    panelStreamers.hidden = !isStreamers;
+    panelAddStream.hidden = isStreamers;
+  }
 
   function showFormMessage(text, type) {
     formMessage.hidden = false;
@@ -106,7 +126,8 @@
     formSubmit.textContent = "Update stream";
     formCancel.hidden = false;
     clearFormMessage();
-    form.scrollIntoView({ behavior: "smooth", block: "start" });
+    setAdminTab("add");
+    document.getElementById("display-name").focus();
   }
 
   function enabledSources() {
@@ -155,7 +176,7 @@
   function renderStreamList() {
     if (state.sources.length === 0) {
       streamList.innerHTML =
-        '<p class="stream-list__empty">No streamers yet. Add one above.</p>';
+        '<p class="stream-list__empty">No streamers yet. Use the Add stream tab to add one.</p>';
       return;
     }
 
@@ -169,9 +190,6 @@
           source.is_live && source.live_title
             ? '<p class="stream-item__live-title">' + escapeHtml(source.live_title) + "</p>"
             : "";
-        var channel = source.channel_id
-          ? '<p class="stream-item__channel">' + escapeHtml(source.channel_id) + "</p>"
-          : "";
 
         return (
           '<article class="' +
@@ -185,17 +203,9 @@
           "</h3>" +
           liveBadge(source) +
           "</div>" +
-          channel +
           liveTitle +
           notes +
           '<div class="stream-item__actions">' +
-          '<select class="stream-item__assign" data-action="assign" aria-label="Assign to slot">' +
-          '<option value="">Assign to slot…</option>' +
-          '<option value="1">Slot 1</option>' +
-          '<option value="2">Slot 2</option>' +
-          '<option value="3">Slot 3</option>' +
-          '<option value="4">Slot 4</option>' +
-          "</select>" +
           '<button type="button" class="btn btn--secondary btn--small" data-action="edit">Edit</button>' +
           '<button type="button" class="btn btn--secondary btn--small" data-action="toggle">' +
           (source.enabled ? "Disable" : "Enable") +
@@ -213,18 +223,6 @@
       .map(function (slot) {
         var source = slot.source;
         var focused = state.focusedSlot === slot.slot_number ? " quad-slot--focused" : "";
-        var name = source ? escapeHtml(source.display_name) : "Empty";
-        var statusBadge = "";
-
-        if (source) {
-          if (!source.enabled) {
-            statusBadge = ' <span class="badge badge--warning">Disabled</span>';
-          } else if (source.is_live) {
-            statusBadge = ' <span class="badge badge--live">Live</span>';
-          } else {
-            statusBadge = ' <span class="badge badge--muted">Offline</span>';
-          }
-        }
 
         var body = "";
         if (source && source.is_live && source.embed_url) {
@@ -243,7 +241,7 @@
           body = '<div class="quad-slot__placeholder">' + offlineMsg + "</div>";
         } else {
           body =
-            '<div class="quad-slot__placeholder">No stream assigned.<br />Pick a streamer from the sidebar.</div>';
+            '<div class="quad-slot__placeholder">No stream assigned.<br />Choose a streamer.</div>';
         }
 
         return (
@@ -253,25 +251,17 @@
           slot.slot_number +
           '">' +
           '<div class="quad-slot__header">' +
-          '<div><p class="quad-slot__label">Slot ' +
+          '<span class="quad-slot__label">Slot ' +
           slot.slot_number +
-          '</p><p class="quad-slot__name">' +
-          name +
-          statusBadge +
-          "</p></div>" +
-          '<div class="quad-slot__controls">' +
-          '<button type="button" class="btn btn--secondary btn--small" data-action="focus" title="Focus">Focus</button>' +
-          '<button type="button" class="btn btn--secondary btn--small" data-action="clear" title="Clear slot">Clear</button>' +
-          "</div>" +
-          "</div>" +
-          body +
-          '<div class="quad-slot__footer">' +
-          '<select data-action="slot-assign" aria-label="Assign stream to slot ' +
+          "</span>" +
+          '<select class="quad-slot__assign" data-action="slot-assign" aria-label="Assign stream to slot ' +
           slot.slot_number +
           '">' +
           assignOptions(source ? source.id : null) +
           "</select>" +
+          '<button type="button" class="btn btn--secondary btn--small quad-slot__fullscreen" data-action="focus" title="Fullscreen">Fullscreen</button>' +
           "</div>" +
+          body +
           "</article>"
         );
       })
@@ -359,6 +349,7 @@
         showFormMessage("Stream saved.", "success");
       }
       resetForm();
+      setAdminTab("streamers");
       await refreshAll();
     } catch (error) {
       showFormMessage(error.message, "error");
@@ -439,29 +430,6 @@
     }
   });
 
-  streamList.addEventListener("change", function (event) {
-    var target = event.target;
-    if (!(target instanceof HTMLSelectElement)) return;
-    if (target.getAttribute("data-action") !== "assign") return;
-
-    var slotNumber = target.value;
-    var item = target.closest("[data-source-id]");
-    if (!item || !slotNumber) {
-      target.value = "";
-      return;
-    }
-
-    var id = item.getAttribute("data-source-id");
-    assignSlot(Number(slotNumber), id)
-      .then(function () {
-        target.value = "";
-      })
-      .catch(function (err) {
-        alert(err.message);
-        target.value = "";
-      });
-  });
-
   quadGrid.addEventListener("click", function (event) {
     var target = event.target;
     if (!(target instanceof HTMLElement)) return;
@@ -473,11 +441,7 @@
     if (!slotEl) return;
     var slotNumber = Number(slotEl.getAttribute("data-slot"));
 
-    if (action === "clear") {
-      clearSlot(slotNumber).catch(function (err) {
-        alert(err.message);
-      });
-    } else if (action === "focus") {
+    if (action === "focus") {
       state.focusedSlot = state.focusedSlot === slotNumber ? null : slotNumber;
       renderQuad();
     }
@@ -505,7 +469,16 @@
   });
 
   form.addEventListener("submit", saveSource);
-  formCancel.addEventListener("click", resetForm);
+  formCancel.addEventListener("click", function () {
+    resetForm();
+    setAdminTab("streamers");
+  });
+  tabStreamers.addEventListener("click", function () {
+    setAdminTab("streamers");
+  });
+  tabAddStream.addEventListener("click", function () {
+    setAdminTab("add");
+  });
   refreshLiveBtn.addEventListener("click", function () {
     refreshLiveStatus(false);
   });

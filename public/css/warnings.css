@@ -383,12 +383,44 @@
 .warnings-filter-item {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 0.65rem;
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-sm);
   background: var(--color-bg-card);
   font-size: 0.875rem;
+}
+
+.warnings-filter-item__label {
+  display: flex;
+  align-items: center;
+  gap: 0.65rem;
+  flex: 1;
+  min-width: 0;
+  cursor: pointer;
+}
+
+.warnings-filter-play {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: rgb(15 23 42 / 0.92);
+  color: var(--color-accent);
+  font-size: 0.75rem;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.warnings-filter-play:hover {
+  border-color: var(--color-accent);
+  background: rgb(30 41 59 / 0.95);
 }
 
 .warnings-dialog__footer {

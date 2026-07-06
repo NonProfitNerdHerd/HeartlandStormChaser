@@ -1,5 +1,20 @@
 import { routeErrorResponse } from "../lib/db-errors";
 import { getGpsConnectionStatus } from "../lib/gps-status";
+import { getPlatformSource } from "../lib/gps-platform";
+import {
+  formatEta,
+  geocodeCityState,
+  getDrivingDurationSeconds,
+} from "../lib/overlay-travel";
+import {
+  buildOverlayWarningBarPayloads,
+} from "../lib/overlay-warnings-bar";
+import { getOverlayWarningLevel } from "../lib/overlay-warnings";
+import {
+  filterAlertsByEventFilters,
+  getAlertsWithinRadius,
+  getWarningsSettings,
+} from "../lib/nws-alerts";
 import { getWeatherForCoordinates } from "../lib/nws-weather";
 import type { Env } from "../index";
 
@@ -146,6 +161,67 @@ function formatCoordinates(latitude: number, longitude: number): string {
   return `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`;
 }
 
+function headingToCardinal(degrees: number | null): string | null {
+  if (degrees == null || Number.isNaN(degrees)) {
+    return null;
+  }
+
+  const directions = [
+    "N",
+    "NNE",
+    "NE",
+    "ENE",
+    "E",
+    "ESE",
+    "SE",
+    "SSE",
+    "S",
+    "SSW",
+    "SW",
+    "WSW",
+    "W",
+    "WNW",
+    "NW",
+    "NNW",
+  ];
+  return directions[Math.round(degrees / 22.5) % 16];
+}
+
+function hpaToInHg(hpa: number | null): number | null {
+  if (hpa == null || Number.isNaN(hpa)) {
+    return null;
+  }
+  return Math.round(hpa * 0.02953 * 100) / 100;
+}
+
+function computeFeelsLikeF(
+  temperatureF: number | null,
+  humidityPercent: number | null,
+): number | null {
+  if (temperatureF == null) {
+    return null;
+  }
+
+  if (humidityPercent == null || temperatureF < 80) {
+    return Math.round(temperatureF);
+  }
+
+  const temp = temperatureF;
+  const rh = humidityPercent;
+  const hi =
+    -42.379 +
+    2.04901523 * temp +
+    10.14333127 * rh -
+    0.22475541 * temp * rh -
+    0.00683783 * temp * temp -
+    0.05481717 * rh * rh +
+    0.00122874 * temp * temp * rh +
+    0.00085282 * temp * rh * rh -
+    0.00000199 * temp * temp * rh * rh;
+
+  return Math.round(Math.max(temp, hi));
+}
+
 async function handleGpsWeatherData(env: Env): Promise<Response> {
   const platformRow = await env.DB.prepare(
     `SELECT d.id, d.device_name, d.last_seen_at,
@@ -171,7 +247,7 @@ async function handleGpsWeatherData(env: Env): Promise<Response> {
 
   const overlayCity = await readOverlaySetting(env, "overlay_target_city");
   const overlayState = await readOverlaySetting(env, "overlay_target_state");
-  const overlayLocationLabel = formatLocationLabel(overlayCity, overlayState);
+  const targetLocationLabel = formatLocationLabel(overlayCity, overlayState);
 
   if (!platformRow) {
     return json({
@@ -179,8 +255,21 @@ async function handleGpsWeatherData(env: Env): Promise<Response> {
       has_platform_source: false,
       message: "No Platform GPS Source Selected",
       platform: null,
+      current_location: null,
+      target_location: targetLocationLabel
+        ? {
+            city: overlayCity || null,
+            state: overlayState || null,
+            label: targetLocationLabel,
+          }
+        : null,
+      travel: {
+        eta_seconds: null,
+        eta_display: "--",
+      },
+      warning_level: "green",
       location: {
-        display: overlayLocationLabel,
+        display: targetLocationLabel,
         overlay_city: overlayCity || null,
         overlay_state: overlayState || null,
         nearest_city: null,
@@ -221,12 +310,44 @@ async function handleGpsWeatherData(env: Env): Promise<Response> {
     nearestState ?? "",
   );
 
-  const displayLocation =
-    overlayLocationLabel ||
+  const currentLocationLabel =
     nearestLocationLabel ||
     (hasLocation
       ? formatCoordinates(platformRow.latitude as number, platformRow.longitude as number)
       : null);
+
+  let etaSeconds: number | null = null;
+  if (
+    hasLocation &&
+    overlayCity &&
+    overlayState &&
+    platformRow.latitude != null &&
+    platformRow.longitude != null
+  ) {
+    const targetCoordinates = await geocodeCityState(overlayCity, overlayState);
+    if (targetCoordinates) {
+      etaSeconds = await getDrivingDurationSeconds(
+        platformRow.latitude,
+        platformRow.longitude,
+        targetCoordinates.latitude,
+        targetCoordinates.longitude,
+      );
+    }
+  }
+
+  let warningLevel: "green" | "yellow" | "red" = "green";
+  if (hasLocation && platformRow.latitude != null && platformRow.longitude != null) {
+    warningLevel = await getOverlayWarningLevel(
+      env,
+      platformRow.latitude,
+      platformRow.longitude,
+    );
+  }
+
+  const feelsLikeF = weather
+    ? computeFeelsLikeF(weather.temperature_f, weather.humidity_percent)
+    : null;
+  const pressureInHg = weather ? hpaToInHg(weather.pressure_hpa) : null;
 
   return json({
     ok: true,
@@ -240,21 +361,107 @@ async function handleGpsWeatherData(env: Env): Promise<Response> {
       longitude: platformRow.longitude,
       speed_mph: platformRow.speed_mph,
       heading_degrees: platformRow.heading_degrees,
+      heading_cardinal: headingToCardinal(platformRow.heading_degrees),
       accuracy_meters: platformRow.accuracy_meters,
       battery_percent: platformRow.battery_percent,
       timestamp_utc: platformRow.timestamp_utc,
       received_at_utc: platformRow.received_at_utc,
     },
+    current_location: currentLocationLabel
+      ? {
+          city: nearestCity,
+          state: nearestState,
+          label: currentLocationLabel,
+        }
+      : null,
+    target_location: targetLocationLabel
+      ? {
+          city: overlayCity || null,
+          state: overlayState || null,
+          label: targetLocationLabel,
+        }
+      : null,
+    travel: {
+      eta_seconds: etaSeconds,
+      eta_display: formatEta(etaSeconds),
+    },
+    warning_level: warningLevel,
     location: {
-      display: displayLocation,
+      display: currentLocationLabel,
       overlay_city: overlayCity || null,
       overlay_state: overlayState || null,
       nearest_city: nearestCity,
       nearest_state: nearestState,
     },
-    weather,
+    weather: weather
+      ? {
+          ...weather,
+          feels_like_f: feelsLikeF,
+          pressure_inhg: pressureInHg,
+        }
+      : null,
     updated_at: new Date().toISOString(),
   });
+}
+
+const OVERLAY_WARNINGS_ROTATE_SECONDS = 20;
+
+async function handleWarningsOverlayData(env: Env): Promise<Response> {
+  const platform = await getPlatformSource(env);
+
+  if (!platform?.location) {
+    return json({
+      ok: true,
+      has_warning: false,
+      message: platform
+        ? "Platform GPS source has no location yet"
+        : "No platform GPS source selected",
+      alerts: [],
+      rotate_seconds: OVERLAY_WARNINGS_ROTATE_SECONDS,
+      updated_at: new Date().toISOString(),
+    });
+  }
+
+  try {
+    const settings = await getWarningsSettings(env);
+    const result = await getAlertsWithinRadius(
+      env,
+      platform.latitude,
+      platform.longitude,
+      settings.radius_miles,
+    );
+
+    const filteredAlerts = filterAlertsByEventFilters(result.alerts, settings.event_filters);
+    const alerts = buildOverlayWarningBarPayloads(filteredAlerts);
+    if (!alerts.length) {
+      return json({
+        ok: true,
+        has_warning: false,
+        message: "No active warnings within range",
+        alerts: [],
+        alert_count: 0,
+        radius_miles: settings.radius_miles,
+        rotate_seconds: OVERLAY_WARNINGS_ROTATE_SECONDS,
+        fetched_at: result.fetched_at,
+        updated_at: new Date().toISOString(),
+      });
+    }
+
+    return json({
+      ok: true,
+      has_warning: true,
+      message: null,
+      alerts,
+      alert_count: alerts.length,
+      radius_miles: settings.radius_miles,
+      rotate_seconds: OVERLAY_WARNINGS_ROTATE_SECONDS,
+      fetched_at: result.fetched_at,
+      updated_at: new Date().toISOString(),
+    });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "Warnings overlay fetch failed";
+    return errorResponse(message, 502);
+  }
 }
 
 export async function handleOverlays(request: Request, env: Env): Promise<Response> {
@@ -273,6 +480,10 @@ export async function handleOverlays(request: Request, env: Env): Promise<Respon
 
     if (pathname === "/api/overlays/gps-weather-data" && method === "GET") {
       return handleGpsWeatherData(env);
+    }
+
+    if (pathname === "/api/overlays/warnings-data" && method === "GET") {
+      return handleWarningsOverlayData(env);
     }
 
     return errorResponse("Not found", 404);

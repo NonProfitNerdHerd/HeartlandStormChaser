@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Status Ticker Overlay · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/overlay-ticker.css" />
+  </head>
+  <body class="overlay-body">
+    <div class="ticker-stage" id="ticker-root" aria-live="polite">
+      <div class="ticker-viewport" id="ticker-viewport" hidden>
+        <div class="ticker-track" id="ticker-track">
+          <div class="ticker-run" id="ticker-run-a"></div>
+          <div class="ticker-run" id="ticker-run-b" aria-hidden="true"></div>
+        </div>
+      </div>
+
+      <p class="ticker-empty ticker-empty--hidden" id="ticker-empty">
+        No ticker / status text saved yet.
+      </p>
+    </div>
+
+    <script src="/js/overlay-ticker.js"></script>
+  </body>
+</html>
