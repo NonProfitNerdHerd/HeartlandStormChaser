@@ -2,6 +2,7 @@ import { handleChases } from "./routes/chases";
 import { handleChasersStreams } from "./routes/chasers-streams";
 import { handleDashboard } from "./routes/dashboard";
 import { handleDbTest } from "./routes/db-test";
+import { handleGeocode } from "./routes/geocode";
 import { handleGps } from "./routes/gps";
 import { handleHealth } from "./routes/health";
 import { handleOverlays } from "./routes/overlays";
@@ -54,6 +55,10 @@ export default {
 
     if (url.pathname.startsWith("/api/overlay") || url.pathname.startsWith("/api/overlays")) {
       return handleOverlays(request, env);
+    }
+
+    if (url.pathname.startsWith("/api/geocode")) {
+      return handleGeocode(request);
     }
 
     return env.ASSETS.fetch(request);

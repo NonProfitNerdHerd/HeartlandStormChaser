@@ -9,12 +9,13 @@ import android.text.TextWatcher
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.ArrayAdapter
 import androidx.core.content.ContextCompat
 import androidx.fragment.app.Fragment
 import androidx.lifecycle.lifecycleScope
 import com.heartlandstormchaser.gps.databinding.FragmentOverlaysBinding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -22,9 +23,10 @@ class OverlaysFragment : Fragment() {
     private var _binding: FragmentOverlaysBinding? = null
     private val binding get() = _binding!!
     private lateinit var preferences: GpsPreferences
-    private lateinit var locationAdapter: ArrayAdapter<String>
+    private lateinit var locationAdapter: NoFilterArrayAdapter
     private var suppressLocationFiltering = false
     private var selectedTarget: CitySuggestion? = null
+    private var suggestJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -54,13 +56,15 @@ class OverlaysFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        suggestJob?.cancel()
         _binding = null
         super.onDestroyView()
     }
 
     private fun setupLocationAutocomplete() {
-        locationAdapter = ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, mutableListOf())
+        locationAdapter = NoFilterArrayAdapter(requireContext())
         binding.locationInput.setAdapter(locationAdapter)
+        binding.locationInput.threshold = 1
 
         binding.locationInput.addTextChangedListener(object : TextWatcher {
             override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit
@@ -70,7 +74,7 @@ class OverlaysFragment : Fragment() {
                     return
                 }
                 selectedTarget = UsCitySuggestions.parseSelection(s?.toString().orEmpty())
-                refreshLocationSuggestions(s?.toString().orEmpty())
+                scheduleLocationSuggestions(s?.toString().orEmpty())
                 updateMapsButtonState()
             }
         })
@@ -84,18 +88,44 @@ class OverlaysFragment : Fragment() {
 
         binding.locationInput.setOnFocusChangeListener { _, hasFocus ->
             if (hasFocus && binding.locationInput.text?.isNotBlank() == true) {
-                refreshLocationSuggestions(binding.locationInput.text?.toString().orEmpty())
-                binding.locationInput.showDropDown()
+                scheduleLocationSuggestions(binding.locationInput.text?.toString().orEmpty(), immediate = true)
             }
         }
     }
 
-    private fun refreshLocationSuggestions(query: String) {
-        val suggestions = UsCitySuggestions.filter(query)
-        locationAdapter.clear()
-        locationAdapter.addAll(suggestions.map { it.label })
-        locationAdapter.notifyDataSetChanged()
-        if (suggestions.isNotEmpty() && binding.locationInput.hasFocus()) {
+    private fun scheduleLocationSuggestions(query: String, immediate: Boolean = false) {
+        suggestJob?.cancel()
+        suggestJob = lifecycleScope.launch {
+            if (!immediate) {
+                delay(300)
+            }
+            refreshLocationSuggestions(query)
+        }
+    }
+
+    private suspend fun refreshLocationSuggestions(query: String) {
+        val trimmed = query.trim()
+        if (trimmed.isBlank()) {
+            locationAdapter.replaceItems(emptyList())
+            return
+        }
+
+        val local = UsCitySuggestions.filter(trimmed, limit = 8).map { it.label }
+        val remoteResult = withContext(Dispatchers.IO) {
+            GpsApiClient(preferences.serverUrl).fetchGeocodeSuggestions(trimmed)
+        }
+        val remote = if (remoteResult.success) {
+            remoteResult.suggestions.map { it.label }
+        } else {
+            emptyList()
+        }
+
+        val merged = (local + remote)
+            .distinctBy { it.lowercase() }
+            .take(10)
+
+        locationAdapter.replaceItems(merged)
+        if (merged.isNotEmpty() && binding.locationInput.hasFocus()) {
             binding.locationInput.showDropDown()
         }
     }

@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    html, body, #map { margin: 0; padding: 0; width: 100%; height: 100%; background: #0f172a; }
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <script>
+    var map = L.map("map", { zoomControl: true }).setView([39.8283, -98.5795], 5);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      attribution: "&copy; OpenStreetMap contributors",
+      maxZoom: 19,
+    }).addTo(map);
+    var routeLayer = null;
+
+    function renderRoute(payloadJson) {
+      var payload = typeof payloadJson === "string" ? JSON.parse(payloadJson) : payloadJson;
+      var points = payload.points || [];
+      var chase = payload.chase || {};
+
+      if (routeLayer) {
+        map.removeLayer(routeLayer);
+        routeLayer = null;
+      }
+
+      var latlngs = points
+        .filter(function (p) { return p.lat != null && p.lng != null; })
+        .map(function (p) { return [p.lat, p.lng]; });
+
+      if (!latlngs.length && chase.start_lat != null && chase.start_lng != null) {
+        latlngs.push([chase.start_lat, chase.start_lng]);
+      }
+
+      if (!latlngs.length) {
+        return;
+      }
+
+      routeLayer = L.layerGroup().addTo(map);
+
+      if (latlngs.length > 1) {
+        L.polyline(latlngs, { color: "#38bdf8", weight: 4, opacity: 0.9 }).addTo(routeLayer);
+      }
+
+      L.circleMarker(latlngs[0], {
+        radius: 8,
+        color: "#22c55e",
+        fillColor: "#22c55e",
+        fillOpacity: 1,
+      }).bindTooltip("Start").addTo(routeLayer);
+
+      if (latlngs.length > 1) {
+        var end = latlngs[latlngs.length - 1];
+        L.circleMarker(end, {
+          radius: 8,
+          color: "#ef4444",
+          fillColor: "#ef4444",
+          fillOpacity: 1,
+        }).bindTooltip("End").addTo(routeLayer);
+      }
+
+      map.fitBounds(L.latLngBounds(latlngs), { padding: [24, 24], maxZoom: 14 });
+    }
+  </script>
+</body>
+</html>

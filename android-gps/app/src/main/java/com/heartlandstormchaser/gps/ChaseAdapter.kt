@@ -7,7 +7,9 @@ import androidx.recyclerview.widget.ListAdapter
 import androidx.recyclerview.widget.RecyclerView
 import com.heartlandstormchaser.gps.databinding.ItemChaseBinding
 
-class ChaseAdapter : ListAdapter<ChaseSummary, ChaseAdapter.ChaseViewHolder>(DiffCallback) {
+class ChaseAdapter(
+    private val onChaseClick: (ChaseSummary) -> Unit,
+) : ListAdapter<ChaseSummary, ChaseAdapter.ChaseViewHolder>(DiffCallback) {
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ChaseViewHolder {
         val binding = ItemChaseBinding.inflate(LayoutInflater.from(parent.context), parent, false)
@@ -15,14 +17,15 @@ class ChaseAdapter : ListAdapter<ChaseSummary, ChaseAdapter.ChaseViewHolder>(Dif
     }
 
     override fun onBindViewHolder(holder: ChaseViewHolder, position: Int) {
-        holder.bind(getItem(position))
+        holder.bind(getItem(position), onChaseClick)
     }
 
     class ChaseViewHolder(
         private val binding: ItemChaseBinding,
     ) : RecyclerView.ViewHolder(binding.root) {
-        fun bind(chase: ChaseSummary) {
+        fun bind(chase: ChaseSummary, onChaseClick: (ChaseSummary) -> Unit) {
             val context = binding.root.context
+            binding.root.setOnClickListener { onChaseClick(chase) }
             binding.chaseNameText.text = chase.chaseName
             binding.chaseStatusText.text = statusLabel(context, chase.status)
             binding.chaseDistanceText.text = context.getString(

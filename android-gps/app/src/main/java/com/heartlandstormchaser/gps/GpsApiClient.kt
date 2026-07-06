@@ -60,6 +60,12 @@ data class OverlaySettingsResult(
     val error: String? = null,
 )
 
+data class GeocodeSuggestionsResult(
+    val success: Boolean,
+    val suggestions: List<CitySuggestion> = emptyList(),
+    val error: String? = null,
+)
+
 data class WarningAlert(
     val id: String,
     val event: String,
@@ -341,6 +347,19 @@ class GpsApiClient(
         }
     }
 
+    fun fetchGeocodeSuggestions(query: String): GeocodeSuggestionsResult {
+        val trimmed = query.trim()
+        if (trimmed.length < 2) {
+            return GeocodeSuggestionsResult(success = true, suggestions = emptyList())
+        }
+
+        val encoded = java.net.URLEncoder.encode(trimmed, Charsets.UTF_8.name())
+        return getJson("/api/geocode/suggest?q=$encoded") { json, _ ->
+            val suggestions = json.optJSONArray("suggestions").toCitySuggestions()
+            GeocodeSuggestionsResult(success = true, suggestions = suggestions)
+        }
+    }
+
     fun fetchWarningsSettings(): WarningsSettingsResult {
         return getJson("/api/warnings/settings") { json, _ ->
             parseWarningsSettingsResult(json)
@@ -573,6 +592,24 @@ class GpsApiClient(
             createdAt = json.optString("created_at"),
             updatedAt = json.optString("updated_at"),
         )
+    }
+
+    private fun org.json.JSONArray?.toCitySuggestions(): List<CitySuggestion> {
+        if (this == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until length()) {
+                val item = optJSONObject(index) ?: continue
+                val city = item.optString("city").trim()
+                val state = item.optString("state").trim()
+                if (city.isBlank() || state.isBlank()) {
+                    continue
+                }
+                add(CitySuggestion(city, state))
+            }
+        }
     }
 
     private fun org.json.JSONArray?.toChaseSummaries(): List<ChaseSummary> {

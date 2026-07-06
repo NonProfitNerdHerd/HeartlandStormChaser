@@ -16,6 +16,9 @@ import com.heartlandstormchaser.gps.databinding.DialogChaseExpenseBinding
 import com.heartlandstormchaser.gps.databinding.DialogCreateChaseBinding
 import com.heartlandstormchaser.gps.databinding.FragmentChasesBinding
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 
@@ -29,6 +32,8 @@ class ChasesFragment : Fragment() {
     private var activeChase: ChaseSummary? = null
     private var activeExpenses: List<ChaseExpense> = emptyList()
     private var notesDirty = false
+    private var refreshJob: Job? = null
+    private var durationJob: Job? = null
 
     override fun onCreateView(
         inflater: LayoutInflater,
@@ -43,7 +48,9 @@ class ChasesFragment : Fragment() {
         super.onViewCreated(view, savedInstanceState)
         preferences = GpsPreferences(requireContext())
 
-        chaseAdapter = ChaseAdapter()
+        chaseAdapter = ChaseAdapter { chase ->
+            startActivity(ChaseDetailActivity.createIntent(requireContext(), chase.id))
+        }
         binding.chasesList.layoutManager = LinearLayoutManager(requireContext())
         binding.chasesList.adapter = chaseAdapter
 
@@ -65,6 +72,13 @@ class ChasesFragment : Fragment() {
     override fun onResume() {
         super.onResume()
         refreshChases()
+        startActiveChaseMonitoring()
+    }
+
+    override fun onPause() {
+        refreshJob?.cancel()
+        durationJob?.cancel()
+        super.onPause()
     }
 
     override fun onDestroyView() {
@@ -136,6 +150,10 @@ class ChasesFragment : Fragment() {
             R.string.chase_distance_miles,
             chase.totalDistanceMiles,
         )
+        binding.activeChaseDurationText.text = getString(
+            R.string.chase_duration_elapsed,
+            formatChaseDuration(chase.startTime, chase.endTime),
+        )
         binding.activeChaseExpensesText.text = getString(
             R.string.chase_expenses_total,
             chase.totalExpenses,
@@ -158,6 +176,43 @@ class ChasesFragment : Fragment() {
 
         expenseAdapter.submitList(activeExpenses)
         updateGpsWarning()
+        startActiveChaseMonitoring()
+    }
+
+    private fun startActiveChaseMonitoring() {
+        refreshJob?.cancel()
+        durationJob?.cancel()
+
+        val chase = activeChase ?: return
+        if (chase.status != "active" && chase.status != "paused") {
+            return
+        }
+
+        durationJob = lifecycleScope.launch {
+            while (isActive) {
+                updateDurationDisplay()
+                delay(1_000)
+            }
+        }
+
+        refreshJob = lifecycleScope.launch {
+            while (isActive) {
+                delay(10_000)
+                val current = activeChase ?: break
+                if (current.status != "active" && current.status != "paused") {
+                    break
+                }
+                loadActiveChaseDetail(current.id)
+            }
+        }
+    }
+
+    private fun updateDurationDisplay() {
+        val chase = activeChase ?: return
+        binding.activeChaseDurationText.text = getString(
+            R.string.chase_duration_elapsed,
+            formatChaseDuration(chase.startTime, chase.endTime),
+        )
     }
 
     private fun updateGpsWarning() {

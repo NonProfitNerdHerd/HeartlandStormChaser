@@ -78,18 +78,9 @@
                     android:padding="16dp">
 
                     <TextView
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:text="@string/chase_active_heading"
-                        android:textColor="@color/md_theme_on_surface"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
-
-                    <TextView
                         android:id="@+id/activeChaseNameText"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
                         android:textColor="@color/md_theme_on_surface"
                         android:textSize="18sp"
                         android:textStyle="bold" />
@@ -121,6 +112,23 @@
                         android:textSize="14sp" />
 
                     <TextView
+                        android:id="@+id/activeChaseDurationText"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="4dp"
+                        android:textColor="@color/md_theme_on_surface"
+                        android:textSize="14sp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="16dp"
+                        android:text="@string/chase_expenses_heading"
+                        android:textColor="@color/md_theme_on_surface"
+                        android:textSize="13sp"
+                        android:textStyle="bold" />
+
+                    <TextView
                         android:id="@+id/activeChaseExpensesText"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
@@ -128,29 +136,20 @@
                         android:textColor="@color/md_theme_on_surface"
                         android:textSize="14sp" />
 
-                    <LinearLayout
+                    <androidx.recyclerview.widget.RecyclerView
+                        android:id="@+id/activeChaseExpensesList"
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="12dp"
-                        android:orientation="horizontal">
+                        android:layout_marginTop="6dp"
+                        android:nestedScrollingEnabled="false" />
 
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/pauseResumeChaseButton"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_marginEnd="8dp"
-                            android:layout_weight="1"
-                            android:text="@string/action_pause_chase" />
-
-                        <com.google.android.material.button.MaterialButton
-                            android:id="@+id/endChaseButton"
-                            style="@style/Widget.Material3.Button.OutlinedButton"
-                            android:layout_width="0dp"
-                            android:layout_height="wrap_content"
-                            android:layout_weight="1"
-                            android:text="@string/action_end_chase" />
-                    </LinearLayout>
+                    <com.google.android.material.button.MaterialButton
+                        android:id="@+id/addExpenseButton"
+                        style="@style/Widget.Material3.Button.OutlinedButton"
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:layout_marginTop="8dp"
+                        android:text="@string/action_add_expense" />
 
                     <TextView
                         android:layout_width="match_parent"
@@ -184,29 +183,29 @@
                         android:layout_gravity="end"
                         android:text="@string/action_save_notes" />
 
-                    <TextView
+                    <LinearLayout
                         android:layout_width="match_parent"
                         android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/chase_expenses_heading"
-                        android:textColor="@color/md_theme_on_surface"
-                        android:textSize="13sp"
-                        android:textStyle="bold" />
+                        android:layout_marginTop="16dp"
+                        android:orientation="horizontal">
 
-                    <androidx.recyclerview.widget.RecyclerView
-                        android:id="@+id/activeChaseExpensesList"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="6dp"
-                        android:nestedScrollingEnabled="false" />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/pauseResumeChaseButton"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_marginEnd="8dp"
+                            android:layout_weight="1"
+                            android:text="@string/action_pause_chase" />
 
-                    <com.google.android.material.button.MaterialButton
-                        android:id="@+id/addExpenseButton"
-                        style="@style/Widget.Material3.Button.OutlinedButton"
-                        android:layout_width="match_parent"
-                        android:layout_height="wrap_content"
-                        android:layout_marginTop="8dp"
-                        android:text="@string/action_add_expense" />
+                        <com.google.android.material.button.MaterialButton
+                            android:id="@+id/endChaseButton"
+                            style="@style/Widget.Material3.Button.OutlinedButton"
+                            android:layout_width="0dp"
+                            android:layout_height="wrap_content"
+                            android:layout_weight="1"
+                            android:text="@string/action_end_chase" />
+                    </LinearLayout>
                 </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 

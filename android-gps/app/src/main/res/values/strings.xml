@@ -113,6 +113,11 @@
     <string name="chase_expenses_total">Expenses: $%1$.2f</string>
     <string name="chase_started_at">Started: %1$s</string>
     <string name="chase_ended_at">Ended: %1$s</string>
+    <string name="chase_duration_elapsed">%1$s elapsed</string>
+    <string name="chase_detail_title">Chase details</string>
+    <string name="chase_map_heading">Route map</string>
+    <string name="chase_detail_no_notes">No notes recorded.</string>
+    <string name="chase_detail_no_expenses">No expenses recorded.</string>
     <string name="chase_gps_warning">GPS broadcast is off. Turn it on in the GPS tab to record chase points.</string>
     <string name="chase_recording_indicator">● Recording GPS</string>
     <string name="chase_active_heading">Active chase</string>

@@ -104,6 +104,7 @@ object UsCitySuggestions {
         CitySuggestion("Tyler", "TX"),
         CitySuggestion("Wichita", "KS"),
         CitySuggestion("Wichita Falls", "TX"),
+        CitySuggestion("West Salem", "WI"),
         CitySuggestion("Woodward", "OK"),
         CitySuggestion("Yukon", "OK"),
     )
@@ -119,11 +120,23 @@ object UsCitySuggestions {
         }
 
         val queryLower = normalizedQuery.lowercase()
+        val parts = queryLower.split(Regex("\\s+")).filter { it.isNotBlank() }
 
         return cities.asSequence()
             .filter { suggestion ->
-                suggestion.city.lowercase().contains(queryLower) ||
-                    suggestion.label.lowercase().contains(queryLower)
+                val cityLower = suggestion.city.lowercase()
+                val labelLower = suggestion.label.lowercase()
+                parts.all { part ->
+                    cityLower.contains(part) || labelLower.contains(part)
+                }
+            }
+            .sortedBy { suggestion ->
+                val cityLower = suggestion.city.lowercase()
+                when {
+                    cityLower.startsWith(queryLower) -> 0
+                    parts.all { cityLower.startsWith(it) } -> 1
+                    else -> 2
+                }
             }
             .distinctBy { it.label.lowercase() }
             .take(limit)
