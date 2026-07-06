@@ -1,0 +1,267 @@
+/* Chases pages */
+
+.site-main--wide {
+  max-width: 96rem;
+}
+
+.chases-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+.chases-title {
+  margin: 0 0 0.35rem;
+  font-size: 1.75rem;
+}
+
+.chases-subtitle {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.chases-back-link {
+  display: inline-block;
+  margin-bottom: 0.5rem;
+  font-size: 0.875rem;
+}
+
+.chases-toolbar__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.chases-panel {
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  background: var(--color-bg-card);
+  box-shadow: var(--shadow-card);
+}
+
+.chases-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 1rem;
+}
+
+.chases-panel__title {
+  margin: 0;
+  font-size: 1.125rem;
+}
+
+.chases-table-wrap {
+  overflow-x: auto;
+}
+
+.chases-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+}
+
+.chases-table th,
+.chases-table td {
+  padding: 0.65rem 0.75rem;
+  border-bottom: 1px solid var(--color-border);
+  text-align: left;
+  vertical-align: top;
+}
+
+.chases-table th {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--color-text-muted);
+}
+
+.chases-empty {
+  text-align: center;
+  color: var(--color-text-muted);
+  padding: 1.5rem !important;
+}
+
+.chases-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.35rem;
+}
+
+.chase-detail-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .chase-detail-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+.chase-summary-list {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 0.35rem 1rem;
+  margin: 0 0 1rem;
+}
+
+.chase-summary-list dt {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+.chase-summary-list dd {
+  margin: 0;
+}
+
+.chase-notes-label {
+  display: block;
+  margin-bottom: 0.35rem;
+  font-weight: 600;
+}
+
+.chase-notes-input {
+  width: 100%;
+  min-height: 6rem;
+  margin-bottom: 0.75rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+  resize: vertical;
+}
+
+.chase-message {
+  margin: 0.75rem 0 0;
+  font-size: 0.875rem;
+}
+
+.chase-message--success {
+  color: var(--color-success, #22c55e);
+}
+
+.chase-message--error {
+  color: var(--color-danger, #ef4444);
+}
+
+.expense-breakdown {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.5rem 1rem;
+  margin-bottom: 0.75rem;
+}
+
+.expense-breakdown__item {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  padding: 0.5rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.chase-total-expenses {
+  margin: 0;
+  font-size: 1.05rem;
+  font-weight: 600;
+}
+
+.chase-map {
+  height: 28rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  overflow: hidden;
+}
+
+.chase-dialog {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  max-width: 28rem;
+  width: calc(100% - 2rem);
+  background: var(--color-bg-card);
+  color: inherit;
+}
+
+.chase-dialog::backdrop {
+  background: rgb(0 0 0 / 0.45);
+}
+
+.chase-dialog__form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  padding: 1.25rem;
+}
+
+.chase-dialog__title {
+  margin: 0 0 0.25rem;
+}
+
+.chase-dialog__form label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+}
+
+.chase-dialog__form input,
+.chase-dialog__form select {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+}
+
+.chase-dialog__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.badge--active {
+  background: rgb(34 197 94 / 0.15);
+  color: #4ade80;
+}
+
+.badge--paused {
+  background: rgb(251 191 36 / 0.15);
+  color: #fbbf24;
+}
+
+.badge--completed {
+  background: rgb(148 163 184 / 0.15);
+  color: #cbd5e1;
+}
+
+.btn--small {
+  padding: 0.35rem 0.65rem;
+  font-size: 0.8rem;
+}
+
+.btn--danger {
+  border-color: rgb(239 68 68 / 0.45);
+  color: #fca5a5;
+}
+
+.btn--danger:hover {
+  background: rgb(239 68 68 / 0.12);
+}

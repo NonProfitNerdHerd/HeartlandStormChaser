@@ -208,6 +208,105 @@ class GpsPreferences(context: Context) {
         editor.apply()
     }
 
+    var activeChaseId: String?
+        get() = prefs.getString(KEY_ACTIVE_CHASE_ID, null)?.takeIf { it.isNotBlank() }
+        set(value) {
+            prefs.edit().apply {
+                if (value.isNullOrBlank()) {
+                    remove(KEY_ACTIVE_CHASE_ID)
+                } else {
+                    putString(KEY_ACTIVE_CHASE_ID, value.trim())
+                }
+            }.apply()
+        }
+
+    var activeChaseStatus: String?
+        get() = prefs.getString(KEY_ACTIVE_CHASE_STATUS, null)?.takeIf { it.isNotBlank() }
+        set(value) {
+            prefs.edit().apply {
+                if (value.isNullOrBlank()) {
+                    remove(KEY_ACTIVE_CHASE_STATUS)
+                } else {
+                    putString(KEY_ACTIVE_CHASE_STATUS, value.trim())
+                }
+            }.apply()
+        }
+
+    fun saveActiveChase(chaseId: String?, status: String?) {
+        activeChaseId = chaseId
+        activeChaseStatus = status
+    }
+
+    fun clearActiveChase() {
+        activeChaseId = null
+        activeChaseStatus = null
+    }
+
+    val isChaseTrackingActive: Boolean
+        get() = activeChaseStatus == "active" && !activeChaseId.isNullOrBlank()
+
+    fun enqueuePendingChasePoint(point: ChaseGpsPoint) {
+        val queue = pendingChasePoints().toMutableList()
+        queue.add(point)
+        prefs.edit().putString(KEY_PENDING_CHASE_POINTS_JSON, encodeChasePoints(queue)).apply()
+    }
+
+    fun pendingChasePoints(): List<ChaseGpsPoint> {
+        val raw = prefs.getString(KEY_PENDING_CHASE_POINTS_JSON, null).orEmpty()
+        if (raw.isBlank()) {
+            return emptyList()
+        }
+
+        return runCatching {
+            val array = org.json.JSONArray(raw)
+            buildList {
+                for (index in 0 until array.length()) {
+                    val item = array.optJSONObject(index) ?: continue
+                    add(
+                        ChaseGpsPoint(
+                            lat = item.optDouble("lat"),
+                            lng = item.optDouble("lng"),
+                            accuracy = item.optNullableDouble("accuracy"),
+                            speed = item.optNullableDouble("speed"),
+                            heading = item.optNullableDouble("heading"),
+                            altitude = item.optNullableDouble("altitude"),
+                            recordedAt = item.optString("recorded_at"),
+                        ),
+                    )
+                }
+            }
+        }.getOrElse { emptyList() }
+    }
+
+    fun clearPendingChasePoints() {
+        prefs.edit().remove(KEY_PENDING_CHASE_POINTS_JSON).apply()
+    }
+
+    private fun encodeChasePoints(points: List<ChaseGpsPoint>): String {
+        val array = org.json.JSONArray()
+        points.forEach { point ->
+            array.put(
+                org.json.JSONObject().apply {
+                    put("lat", point.lat)
+                    put("lng", point.lng)
+                    put("accuracy", point.accuracy)
+                    put("speed", point.speed)
+                    put("heading", point.heading)
+                    put("altitude", point.altitude)
+                    put("recorded_at", point.recordedAt)
+                },
+            )
+        }
+        return array.toString()
+    }
+
+    private fun org.json.JSONObject.optNullableDouble(name: String): Double? {
+        if (!has(name) || isNull(name)) {
+            return null
+        }
+        return optDouble(name)
+    }
+
     private fun soundKey(event: String): String = "warning_sound_${event.lowercase().replace(" ", "_")}"
 
     private fun putNullableDouble(key: String, value: Double?) {
@@ -241,6 +340,9 @@ class GpsPreferences(context: Context) {
         private const val KEY_LAST_UPLOAD_ERROR = "last_upload_error"
         private const val KEY_OVERLAY_TARGET_CITY = "overlay_target_city"
         private const val KEY_OVERLAY_TARGET_STATE = "overlay_target_state"
+        private const val KEY_ACTIVE_CHASE_ID = "active_chase_id"
+        private const val KEY_ACTIVE_CHASE_STATUS = "active_chase_status"
+        private const val KEY_PENDING_CHASE_POINTS_JSON = "pending_chase_points_json"
         private const val DEFAULT_SERVER_URL = "https://heartlandstormchaser.ike-j-rebout.workers.dev"
     }
 }

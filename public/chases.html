@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Chase trip history and expenses for HeartlandStormChaser" />
+    <title>Chases · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/chases.css" />
+  </head>
+  <body data-page="chases">
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-logo" href="/">HeartlandStormChaser</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-link" href="/" data-nav="home">Home</a>
+          <a class="nav-link" href="/dashboard.html" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/gps.html" data-nav="gps">GPS</a>
+          <a class="nav-link" href="/warnings.html" data-nav="warnings">Warnings</a>
+          <a class="nav-link" href="/overlays.html" data-nav="overlays">Overlays</a>
+          <a class="nav-link" href="/chases.html" data-nav="chases">Chases</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams">Chasers Streams</a>
+          <a class="nav-link" href="/settings.html" data-nav="settings">Settings</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-main site-main--wide">
+      <div class="chases-toolbar">
+        <div>
+          <h1 class="chases-title">Chase trips</h1>
+          <p class="chases-subtitle" id="chases-status">Loading chases…</p>
+        </div>
+        <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh</button>
+      </div>
+
+      <section class="chases-panel" aria-labelledby="chases-list-heading">
+        <div class="chases-panel__header">
+          <h2 class="chases-panel__title" id="chases-list-heading">All chases</h2>
+          <span class="badge badge--muted" id="chases-count">—</span>
+        </div>
+        <div class="chases-table-wrap">
+          <table class="chases-table" id="chases-table">
+            <thead>
+              <tr>
+                <th>Name</th>
+                <th>Status</th>
+                <th>Started</th>
+                <th>Ended</th>
+                <th>Distance</th>
+                <th>Expenses</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="chases-body">
+              <tr>
+                <td colspan="7" class="chases-empty">Loading…</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    </main>
+
+    <script src="/js/nav.js"></script>
+    <script src="/js/chases.js"></script>
+  </body>
+</html>

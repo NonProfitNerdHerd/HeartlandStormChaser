@@ -134,8 +134,21 @@ class LocationForegroundService : Service() {
             preferences.lastUploadError = if (result.success) null else result.error
 
             if (result.success) {
+                ChasePointSync.flushPending(this@LocationForegroundService)
                 updateNotification(getString(R.string.notification_broadcasting))
             } else {
+                if (preferences.isChaseTrackingActive) {
+                    ChasePointSync.enqueue(
+                        context = this@LocationForegroundService,
+                        latitude = location.latitude,
+                        longitude = location.longitude,
+                        speedMph = speedMph,
+                        headingDegrees = heading,
+                        accuracyMeters = accuracy,
+                        altitudeMeters = altitude,
+                        recordedAt = timestampUtc,
+                    )
+                }
                 updateNotification(getString(R.string.notification_upload_failed))
             }
             sendStatusChanged()

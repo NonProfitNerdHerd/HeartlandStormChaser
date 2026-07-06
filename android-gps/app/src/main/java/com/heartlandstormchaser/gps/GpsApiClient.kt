@@ -102,6 +102,87 @@ data class PlatformWarningsResult(
     val error: String? = null,
 )
 
+data class ChaseSummary(
+    val id: String,
+    val deviceId: String,
+    val chaseName: String,
+    val status: String,
+    val startTime: String,
+    val endTime: String?,
+    val startLat: Double?,
+    val startLng: Double?,
+    val endLat: Double?,
+    val endLng: Double?,
+    val totalDistanceMiles: Double,
+    val totalExpenses: Double,
+    val notes: String,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
+data class ChaseExpense(
+    val id: String,
+    val chaseId: String,
+    val category: String,
+    val amount: Double,
+    val description: String,
+    val expenseTime: String,
+    val createdAt: String,
+    val updatedAt: String,
+)
+
+data class ChaseGpsPoint(
+    val lat: Double,
+    val lng: Double,
+    val accuracy: Double?,
+    val speed: Double?,
+    val heading: Double?,
+    val altitude: Double?,
+    val recordedAt: String,
+)
+
+data class ChaseDetail(
+    val chase: ChaseSummary,
+    val points: List<ChaseGpsPoint>,
+    val expenses: List<ChaseExpense>,
+    val expenseBreakdown: Map<String, Double>,
+)
+
+data class ChaseResult(
+    val success: Boolean,
+    val chase: ChaseSummary? = null,
+    val error: String? = null,
+)
+
+data class ChaseListResult(
+    val success: Boolean,
+    val chases: List<ChaseSummary> = emptyList(),
+    val error: String? = null,
+)
+
+data class ChaseDetailResult(
+    val success: Boolean,
+    val detail: ChaseDetail? = null,
+    val error: String? = null,
+)
+
+data class ChaseExpenseResult(
+    val success: Boolean,
+    val expense: ChaseExpense? = null,
+    val error: String? = null,
+)
+
+data class ChasePointsSyncResult(
+    val success: Boolean,
+    val recordedCount: Int = 0,
+    val error: String? = null,
+)
+
+data class ChaseVoidResult(
+    val success: Boolean,
+    val error: String? = null,
+)
+
 class GpsApiClient(
     private val serverUrl: String,
     private val deviceToken: String? = null,
@@ -306,6 +387,262 @@ class GpsApiClient(
         }
     }
 
+    fun fetchActiveChase(): ChaseResult {
+        return getJson("/api/chases/active", auth = true) { json, _ ->
+            val chaseJson = json.optJSONObject("chase")
+            ChaseResult(
+                success = true,
+                chase = chaseJson?.let { parseChaseSummary(it) },
+            )
+        }
+    }
+
+    fun fetchAllChases(): ChaseListResult {
+        return getJson("/api/chases") { json, _ ->
+            ChaseListResult(
+                success = true,
+                chases = json.optJSONArray("chases").toChaseSummaries(),
+            )
+        }
+    }
+
+    fun fetchChaseDetail(chaseId: String): ChaseDetailResult {
+        return getJson("/api/chases/$chaseId") { json, _ ->
+            val chaseJson = json.optJSONObject("chase")
+                ?: return@getJson ChaseDetailResult(success = false, error = "Chase missing from response")
+
+            ChaseDetailResult(
+                success = true,
+                detail = ChaseDetail(
+                    chase = parseChaseSummary(chaseJson),
+                    points = json.optJSONArray("points").toChaseGpsPoints(),
+                    expenses = json.optJSONArray("expenses").toChaseExpenses(chaseId),
+                    expenseBreakdown = json.optJSONObject("expense_breakdown").toExpenseBreakdown(),
+                ),
+            )
+        }
+    }
+
+    fun createChase(name: String, notes: String? = null): ChaseResult {
+        val payload = JSONObject().apply {
+            put("chase_name", name.trim())
+            if (!notes.isNullOrBlank()) {
+                put("notes", notes.trim())
+            }
+        }
+
+        return postJson("/api/chases", payload, auth = true) { json, _ ->
+            val chaseJson = json.optJSONObject("chase")
+                ?: return@postJson ChaseResult(success = false, error = "Chase missing from response")
+            ChaseResult(success = true, chase = parseChaseSummary(chaseJson))
+        }
+    }
+
+    fun updateChase(
+        chaseId: String,
+        chaseName: String? = null,
+        notes: String? = null,
+        status: String? = null,
+    ): ChaseResult {
+        val payload = JSONObject()
+        chaseName?.let { payload.put("chase_name", it.trim()) }
+        notes?.let { payload.put("notes", it.trim()) }
+        status?.let { payload.put("status", it) }
+
+        return putJson("/api/chases/$chaseId", payload) { json, _ ->
+            val chaseJson = json.optJSONObject("chase")
+                ?: return@putJson ChaseResult(success = false, error = "Chase missing from response")
+            ChaseResult(success = true, chase = parseChaseSummary(chaseJson))
+        }
+    }
+
+    fun completeChase(chaseId: String): ChaseResult {
+        return postJson("/api/chases/$chaseId/complete", JSONObject(), auth = true) { json, _ ->
+            val chaseJson = json.optJSONObject("chase")
+                ?: return@postJson ChaseResult(success = false, error = "Chase missing from response")
+            ChaseResult(success = true, chase = parseChaseSummary(chaseJson))
+        }
+    }
+
+    fun addExpense(
+        chaseId: String,
+        category: String,
+        amount: Double,
+        description: String? = null,
+        expenseTime: String? = null,
+    ): ChaseExpenseResult {
+        val payload = JSONObject().apply {
+            put("category", category)
+            put("amount", amount)
+            put("description", description?.trim().orEmpty())
+            if (!expenseTime.isNullOrBlank()) {
+                put("expense_time", expenseTime)
+            }
+        }
+
+        return postJson("/api/chases/$chaseId/expenses", payload, auth = false) { json, _ ->
+            val expenseJson = json.optJSONObject("expense")
+                ?: return@postJson ChaseExpenseResult(success = false, error = "Expense missing from response")
+            ChaseExpenseResult(success = true, expense = parseChaseExpense(expenseJson))
+        }
+    }
+
+    fun updateExpense(
+        chaseId: String,
+        expenseId: String,
+        category: String? = null,
+        amount: Double? = null,
+        description: String? = null,
+        expenseTime: String? = null,
+    ): ChaseExpenseResult {
+        val payload = JSONObject()
+        category?.let { payload.put("category", it) }
+        amount?.let { payload.put("amount", it) }
+        description?.let { payload.put("description", it.trim()) }
+        expenseTime?.let { payload.put("expense_time", it) }
+
+        return putJson("/api/chases/$chaseId/expenses/$expenseId", payload) { json, _ ->
+            val expenseJson = json.optJSONObject("expense")
+                ?: return@putJson ChaseExpenseResult(success = false, error = "Expense missing from response")
+            ChaseExpenseResult(success = true, expense = parseChaseExpense(expenseJson))
+        }
+    }
+
+    fun deleteExpense(chaseId: String, expenseId: String): ChaseVoidResult {
+        return deleteJson("/api/chases/$chaseId/expenses/$expenseId") { _, _ ->
+            ChaseVoidResult(success = true)
+        }
+    }
+
+    fun syncChasePointsBatch(chaseId: String, points: List<ChaseGpsPoint>): ChasePointsSyncResult {
+        val pointsArray = org.json.JSONArray()
+        points.forEach { point ->
+            pointsArray.put(
+                JSONObject().apply {
+                    put("lat", point.lat)
+                    put("lng", point.lng)
+                    put("accuracy", point.accuracy)
+                    put("speed", point.speed)
+                    put("heading", point.heading)
+                    put("altitude", point.altitude)
+                    put("recorded_at", point.recordedAt)
+                },
+            )
+        }
+
+        val payload = JSONObject().apply {
+            put("points", pointsArray)
+        }
+
+        return postJson("/api/chases/$chaseId/points/batch", payload, auth = true) { json, _ ->
+            ChasePointsSyncResult(
+                success = true,
+                recordedCount = json.optInt("recorded_count", 0),
+            )
+        }
+    }
+
+    private fun parseChaseSummary(json: JSONObject): ChaseSummary {
+        return ChaseSummary(
+            id = json.optString("id"),
+            deviceId = json.optString("device_id"),
+            chaseName = json.optString("chase_name"),
+            status = json.optString("status"),
+            startTime = json.optString("start_time"),
+            endTime = json.optString("end_time").ifBlank { null },
+            startLat = json.optNullableDouble("start_lat"),
+            startLng = json.optNullableDouble("start_lng"),
+            endLat = json.optNullableDouble("end_lat"),
+            endLng = json.optNullableDouble("end_lng"),
+            totalDistanceMiles = json.optDouble("total_distance_miles"),
+            totalExpenses = json.optDouble("total_expenses"),
+            notes = json.optString("notes"),
+            createdAt = json.optString("created_at"),
+            updatedAt = json.optString("updated_at"),
+        )
+    }
+
+    private fun parseChaseExpense(json: JSONObject): ChaseExpense {
+        return ChaseExpense(
+            id = json.optString("id"),
+            chaseId = json.optString("chase_id"),
+            category = json.optString("category"),
+            amount = json.optDouble("amount"),
+            description = json.optString("description"),
+            expenseTime = json.optString("expense_time"),
+            createdAt = json.optString("created_at"),
+            updatedAt = json.optString("updated_at"),
+        )
+    }
+
+    private fun org.json.JSONArray?.toChaseSummaries(): List<ChaseSummary> {
+        if (this == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until length()) {
+                val item = optJSONObject(index) ?: continue
+                add(parseChaseSummary(item))
+            }
+        }
+    }
+
+    private fun org.json.JSONArray?.toChaseGpsPoints(): List<ChaseGpsPoint> {
+        if (this == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until length()) {
+                val item = optJSONObject(index) ?: continue
+                add(
+                    ChaseGpsPoint(
+                        lat = item.optDouble("lat"),
+                        lng = item.optDouble("lng"),
+                        accuracy = item.optNullableDouble("accuracy"),
+                        speed = item.optNullableDouble("speed"),
+                        heading = item.optNullableDouble("heading"),
+                        altitude = item.optNullableDouble("altitude"),
+                        recordedAt = item.optString("recorded_at"),
+                    ),
+                )
+            }
+        }
+    }
+
+    private fun org.json.JSONArray?.toChaseExpenses(defaultChaseId: String): List<ChaseExpense> {
+        if (this == null) {
+            return emptyList()
+        }
+
+        return buildList {
+            for (index in 0 until length()) {
+                val item = optJSONObject(index) ?: continue
+                val expense = parseChaseExpense(item)
+                add(
+                    if (expense.chaseId.isBlank()) {
+                        expense.copy(chaseId = defaultChaseId)
+                    } else {
+                        expense
+                    },
+                )
+            }
+        }
+    }
+
+    private fun JSONObject?.toExpenseBreakdown(): Map<String, Double> {
+        if (this == null) {
+            return emptyMap()
+        }
+
+        return buildMap {
+            keys().forEach { key ->
+                put(key, optDouble(key))
+            }
+        }
+    }
+
     private fun parseWarningsSettingsResult(json: JSONObject): WarningsSettingsResult {
         val settingsJson = json.optJSONObject("settings")
             ?: return WarningsSettingsResult(success = false, error = "Warnings settings missing from response")
@@ -402,24 +739,44 @@ class GpsApiClient(
     private fun <T> putJson(
         path: String,
         payload: JSONObject,
+        auth: Boolean = false,
         onSuccess: (JSONObject, Int) -> T,
     ): T where T : Any {
-        val request = Request.Builder()
+        val builder = Request.Builder()
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
             .addHeader("Content-Type", "application/json")
             .put(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .build()
 
-        return execute(request, onSuccess)
+        if (auth) {
+            builder.addHeader("Authorization", "Bearer ${deviceToken?.trim().orEmpty()}")
+        }
+
+        return execute(builder.build(), onSuccess)
     }
 
     private fun <T> getJson(
+        path: String,
+        auth: Boolean = false,
+        onSuccess: (JSONObject, Int) -> T,
+    ): T where T : Any {
+        val builder = Request.Builder()
+            .url(ApiUrlHelper.apiUrl(serverUrl, path))
+            .get()
+
+        if (auth) {
+            builder.addHeader("Authorization", "Bearer ${deviceToken?.trim().orEmpty()}")
+        }
+
+        return execute(builder.build(), onSuccess)
+    }
+
+    private fun <T> deleteJson(
         path: String,
         onSuccess: (JSONObject, Int) -> T,
     ): T where T : Any {
         val request = Request.Builder()
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
-            .get()
+            .delete()
             .build()
 
         return execute(request, onSuccess)
@@ -468,6 +825,24 @@ class GpsApiClient(
                 WarningsSettingsResult(success = false, error = message)
             request.url.encodedPath.contains("/warnings/platform") ->
                 PlatformWarningsResult(success = false, error = message)
+            request.url.encodedPath.endsWith("/chases/active") ->
+                ChaseResult(success = false, error = message)
+            request.url.encodedPath.endsWith("/chases") && request.method == "GET" ->
+                ChaseListResult(success = false, error = message)
+            request.url.encodedPath.endsWith("/chases") && request.method == "POST" ->
+                ChaseResult(success = false, error = message)
+            request.url.encodedPath.contains("/points/batch") ->
+                ChasePointsSyncResult(success = false, error = message)
+            request.url.encodedPath.contains("/complete") ->
+                ChaseResult(success = false, error = message)
+            request.url.encodedPath.contains("/expenses") && request.method == "DELETE" ->
+                ChaseVoidResult(success = false, error = message)
+            request.url.encodedPath.contains("/expenses") ->
+                ChaseExpenseResult(success = false, error = message)
+            request.url.encodedPath.contains("/chases/") && request.method == "GET" ->
+                ChaseDetailResult(success = false, error = message)
+            request.url.encodedPath.contains("/chases/") && request.method == "PUT" ->
+                ChaseResult(success = false, error = message)
             else -> PairResult(success = false, error = message)
         }
     }

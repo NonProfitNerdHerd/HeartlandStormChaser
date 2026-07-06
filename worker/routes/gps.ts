@@ -5,6 +5,7 @@ import {
   hashToken,
   verifyPairingPin,
 } from "../lib/gps-auth";
+import { maybeRecordChasePointFromGpsUpdate } from "../lib/chase-points";
 import { routeErrorResponse } from "../lib/db-errors";
 import {
   getGpsConnectionStatus,
@@ -381,6 +382,16 @@ async function handleUpdate(request: Request, env: Env): Promise<Response> {
       )
       .run();
   }
+
+  await maybeRecordChasePointFromGpsUpdate(env, device.id, {
+    lat: body.latitude,
+    lng: body.longitude,
+    accuracy: body.accuracy_meters ?? null,
+    speed: body.speed_mph ?? null,
+    heading: body.heading_degrees ?? null,
+    altitude: body.altitude_meters ?? null,
+    recordedAt: timestampUtc,
+  });
 
   return json({
     ok: true,

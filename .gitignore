@@ -16,3 +16,7 @@ Thumbs.db
 
 # TypeScript build output (we use wrangler, not tsc emit)
 dist/
+
+# Android build output
+android-gps/app/build/
+android-gps/.gradle/

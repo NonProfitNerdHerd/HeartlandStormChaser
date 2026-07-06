@@ -1,3 +1,4 @@
+import { handleChases } from "./routes/chases";
 import { handleChasersStreams } from "./routes/chasers-streams";
 import { handleDashboard } from "./routes/dashboard";
 import { handleDbTest } from "./routes/db-test";
@@ -33,6 +34,10 @@ export default {
 
     if (url.pathname.startsWith("/api/chasers-streams")) {
       return handleChasersStreams(request, env);
+    }
+
+    if (url.pathname.startsWith("/api/chases")) {
+      return handleChases(request, env);
     }
 
     if (url.pathname.startsWith("/api/gps")) {
