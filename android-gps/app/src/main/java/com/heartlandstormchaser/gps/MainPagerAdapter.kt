@@ -9,8 +9,8 @@ class MainPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activi
 
     override fun createFragment(position: Int): Fragment {
         return when (position) {
-            0 -> GpsFragment()
-            else -> OverlaysFragment()
+            0 -> OverlaysFragment()
+            else -> GpsFragment()
         }
     }
 }

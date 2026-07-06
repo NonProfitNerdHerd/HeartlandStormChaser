@@ -30,8 +30,8 @@ class MainActivity : AppCompatActivity() {
         binding.mainPager.adapter = MainPagerAdapter(this)
         TabLayoutMediator(binding.mainTabs, binding.mainPager) { tab, position ->
             tab.text = when (position) {
-                0 -> getString(R.string.tab_gps)
-                else -> getString(R.string.tab_overlays)
+                0 -> getString(R.string.tab_overlays)
+                else -> getString(R.string.tab_gps)
             }
         }.attach()
     }
