@@ -152,6 +152,6 @@ class WarningsFragment : Fragment() {
     }
 
     private fun parseColor(value: String): Int {
-        return runCatching { Color.parseColor(value) }.getOrDefault(Color.parseColor("#ff8c00"))
+        return runCatching { Color.parseColor(value) }.getOrElse { Color.parseColor("#ff8c00") }
     }
 }
