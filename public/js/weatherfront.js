@@ -1,22 +1,13 @@
 (function () {
   var REFRESH_INTERVAL_MS = 10000;
-  var COORD_SYNC_THRESHOLD = 0.01;
   var SCALE_STORAGE_KEY = "weatherfront-scale";
-  var AUTO_SYNC_STORAGE_KEY = "weatherfront-auto-sync";
-  var WEATHERFRONT_BASE = "https://app.weatherfront.com/";
 
   var scaleSelect = document.getElementById("scale-select");
-  var autoSyncCheckbox = document.getElementById("auto-sync-checkbox");
-  var syncGpsBtn = document.getElementById("sync-gps-btn");
   var gpsStatusBadge = document.getElementById("gps-status-badge");
   var gpsCoords = document.getElementById("gps-coords");
   var frameScaler = document.getElementById("frame-scaler");
-  var weatherfrontFrame = document.getElementById("weatherfront-frame");
 
   var pollTimer = null;
-  var lastSyncedLat = null;
-  var lastSyncedLon = null;
-  var latestPlatform = null;
 
   function statusBadgeClass(status) {
     if (status === "LIVE") return "badge badge--success";
@@ -43,15 +34,6 @@
       .replace(/"/g, "&quot;");
   }
 
-  function buildWeatherFrontUrl(latitude, longitude) {
-    var url = new URL(WEATHERFRONT_BASE);
-    if (latitude != null && longitude != null) {
-      url.searchParams.set("lat", formatNumber(latitude, 5));
-      url.searchParams.set("lon", formatNumber(longitude, 5));
-    }
-    return url.toString();
-  }
-
   function setScale(percent) {
     var scale = Number(percent) / 100;
     frameScaler.style.setProperty("--wf-scale", String(scale));
@@ -66,37 +48,6 @@
     setScale(scaleSelect.value);
   }
 
-  function loadAutoSyncPreference() {
-    var stored = localStorage.getItem(AUTO_SYNC_STORAGE_KEY);
-    autoSyncCheckbox.checked = stored !== "false";
-  }
-
-  function saveAutoSyncPreference() {
-    localStorage.setItem(AUTO_SYNC_STORAGE_KEY, autoSyncCheckbox.checked ? "true" : "false");
-  }
-
-  function coordsChanged(latitude, longitude) {
-    if (lastSyncedLat == null || lastSyncedLon == null) return true;
-    return (
-      Math.abs(latitude - lastSyncedLat) >= COORD_SYNC_THRESHOLD ||
-      Math.abs(longitude - lastSyncedLon) >= COORD_SYNC_THRESHOLD
-    );
-  }
-
-  function syncIframeToCoords(latitude, longitude, force) {
-    if (latitude == null || longitude == null) return false;
-    if (!force && !coordsChanged(latitude, longitude)) return false;
-
-    var nextUrl = buildWeatherFrontUrl(latitude, longitude);
-    if (weatherfrontFrame.src !== nextUrl) {
-      weatherfrontFrame.src = nextUrl;
-    }
-
-    lastSyncedLat = latitude;
-    lastSyncedLon = longitude;
-    return true;
-  }
-
   function renderPlatformStatus(data) {
     var platform = data && data.platform_source;
 
@@ -105,11 +56,9 @@
       gpsStatusBadge.textContent = "No platform GPS";
       gpsCoords.textContent =
         (data && data.message) || "Select a platform GPS source on the GPS page.";
-      latestPlatform = null;
       return;
     }
 
-    latestPlatform = platform;
     var location = platform.location;
     var status = location ? location.status : platform.status;
 
@@ -128,11 +77,8 @@
       formatNumber(location.latitude, 5) +
       ", " +
       formatNumber(location.longitude, 5) +
-      (location.speed_mph != null ? " · " + formatNumber(location.speed_mph, 1) + " mph" : "");
-
-    if (autoSyncCheckbox.checked) {
-      syncIframeToCoords(location.latitude, location.longitude, false);
-    }
+      (location.speed_mph != null ? " · " + formatNumber(location.speed_mph, 1) + " mph" : "") +
+      " · fed to WeatherFront";
   }
 
   async function refreshPlatformGps() {
@@ -159,31 +105,7 @@
     setScale(scaleSelect.value);
   });
 
-  autoSyncCheckbox.addEventListener("change", function () {
-    saveAutoSyncPreference();
-    if (autoSyncCheckbox.checked && latestPlatform && latestPlatform.location) {
-      syncIframeToCoords(
-        latestPlatform.location.latitude,
-        latestPlatform.location.longitude,
-        true,
-      );
-    }
-  });
-
-  syncGpsBtn.addEventListener("click", function () {
-    if (latestPlatform && latestPlatform.location) {
-      syncIframeToCoords(
-        latestPlatform.location.latitude,
-        latestPlatform.location.longitude,
-        true,
-      );
-      return;
-    }
-    refreshPlatformGps();
-  });
-
   loadScalePreference();
-  loadAutoSyncPreference();
   refreshPlatformGps();
   startPolling();
 })();

@@ -43,15 +43,6 @@
           </select>
         </label>
 
-        <label class="weatherfront-control weatherfront-control--checkbox">
-          <input type="checkbox" id="auto-sync-checkbox" checked />
-          <span>Auto-sync platform GPS</span>
-        </label>
-
-        <button type="button" class="btn btn--secondary" id="sync-gps-btn">
-          Sync GPS now
-        </button>
-
         <div class="weatherfront-controls__status">
           <span class="badge badge--muted" id="gps-status-badge">GPS —</span>
           <span class="weatherfront-controls__coords" id="gps-coords">Loading platform GPS…</span>
@@ -63,8 +54,8 @@
           <iframe
             id="weatherfront-frame"
             title="WeatherFront"
-            src="https://app.weatherfront.com/"
-            allow="fullscreen"
+            src="/weatherfront-embed/"
+            allow="geolocation; fullscreen"
             referrerpolicy="no-referrer-when-downgrade"
           ></iframe>
         </div>

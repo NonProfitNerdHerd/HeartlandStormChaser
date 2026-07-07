@@ -1,0 +1,125 @@
+(function () {
+  "use strict";
+
+  var REFRESH_MS = 5000;
+  var cachedLocation = null;
+  var watches = new Map();
+  var watchSeq = 1;
+  var pollTimer = null;
+  var realGeo = navigator.geolocation;
+
+  function mphToMps(mph) {
+    if (mph == null || Number.isNaN(mph)) return null;
+    return Number(mph) * 0.44704;
+  }
+
+  function platformToPosition(location) {
+    return {
+      coords: {
+        latitude: location.latitude,
+        longitude: location.longitude,
+        accuracy: location.accuracy_meters != null ? location.accuracy_meters : 10,
+        altitude: location.altitude_meters != null ? location.altitude_meters : null,
+        altitudeAccuracy: null,
+        heading: location.heading_degrees != null ? location.heading_degrees : null,
+        speed: mphToMps(location.speed_mph),
+      },
+      timestamp: Date.now(),
+    };
+  }
+
+  async function fetchPlatformLocation() {
+    try {
+      var response = await fetch("/api/gps/platform", { credentials: "same-origin" });
+      var data = await response.json();
+      if (response.ok && data.platform_source && data.platform_source.location) {
+        cachedLocation = data.platform_source.location;
+        return cachedLocation;
+      }
+    } catch (_error) {
+      /* fall through */
+    }
+    return null;
+  }
+
+  function notifyWatches() {
+    if (!cachedLocation) return;
+    var position = platformToPosition(cachedLocation);
+    watches.forEach(function (success) {
+      try {
+        success(position);
+      } catch (_error) {
+        /* ignore listener errors */
+      }
+    });
+  }
+
+  function ensurePolling() {
+    if (pollTimer) return;
+    pollTimer = setInterval(function () {
+      fetchPlatformLocation().then(function () {
+        notifyWatches();
+      });
+    }, REFRESH_MS);
+  }
+
+  function stopPollingIfIdle() {
+    if (watches.size === 0 && pollTimer) {
+      clearInterval(pollTimer);
+      pollTimer = null;
+    }
+  }
+
+  navigator.geolocation.getCurrentPosition = function (success, error) {
+    fetchPlatformLocation().then(function (location) {
+      if (location) {
+        success(platformToPosition(location));
+        return;
+      }
+      if (realGeo && typeof realGeo.getCurrentPosition === "function") {
+        realGeo.getCurrentPosition(success, error);
+        return;
+      }
+      if (error) {
+        error({
+          code: 2,
+          message: "Platform GPS unavailable",
+          PERMISSION_DENIED: 1,
+          POSITION_UNAVAILABLE: 2,
+          TIMEOUT: 3,
+        });
+      }
+    });
+  };
+
+  navigator.geolocation.watchPosition = function (success, error) {
+    var watchId = watchSeq++;
+    watches.set(watchId, success);
+    ensurePolling();
+
+    fetchPlatformLocation().then(function (location) {
+      if (location) {
+        success(platformToPosition(location));
+        return;
+      }
+      if (error) {
+        error({
+          code: 2,
+          message: "Platform GPS unavailable",
+          PERMISSION_DENIED: 1,
+          POSITION_UNAVAILABLE: 2,
+          TIMEOUT: 3,
+        });
+      }
+    });
+
+    return watchId;
+  };
+
+  navigator.geolocation.clearWatch = function (watchId) {
+    watches.delete(watchId);
+    stopPollingIfIdle();
+  };
+
+  fetchPlatformLocation();
+})();

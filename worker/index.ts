@@ -8,6 +8,7 @@ import { handleHealth } from "./routes/health";
 import { handleOverlays } from "./routes/overlays";
 import { handleWarnings } from "./routes/warnings";
 import { handleWeather } from "./routes/weather";
+import { handleWeatherfrontProxy } from "./routes/weatherfront-proxy";
 
 export interface Env {
   ASSETS: Fetcher;
@@ -59,6 +60,10 @@ export default {
 
     if (url.pathname.startsWith("/api/geocode")) {
       return handleGeocode(request);
+    }
+
+    if (url.pathname === "/weatherfront-embed" || url.pathname.startsWith("/weatherfront-embed/")) {
+      return handleWeatherfrontProxy(request);
     }
 
     return env.ASSETS.fetch(request);
