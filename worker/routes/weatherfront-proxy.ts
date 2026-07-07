@@ -1,80 +1,20 @@
-const WEATHERFRONT_ORIGIN = "https://app.weatherfront.com";
-const PROXY_PREFIX = "/weatherfront-embed";
+import {
+  WEATHERFRONT_APP_ORIGIN,
+  WEATHERFRONT_EMBED_PREFIX,
+  buildForwardHeaders,
+  buildProxyResponseHeaders,
+  isJavaScriptContentType,
+  matchWeatherfrontUpstream,
+  proxyWeatherfrontUpstream,
+  rewriteLocationHeader,
+  rewriteWeatherfrontUrls,
+} from "../lib/weatherfront-upstream";
 
-const HOP_BY_HOP_HEADERS = new Set([
-  "connection",
-  "keep-alive",
-  "proxy-authenticate",
-  "proxy-authorization",
-  "te",
-  "trailers",
-  "transfer-encoding",
-  "upgrade",
-  "host",
-  "content-length",
-  "content-encoding",
-]);
-
-const STRIP_RESPONSE_HEADERS = new Set([
-  "content-security-policy",
-  "content-security-policy-report-only",
-  "x-frame-options",
-  "strict-transport-security",
-]);
-
-function buildUpstreamUrl(requestUrl: URL): URL {
+function buildEmbedUpstreamUrl(requestUrl: URL): URL {
   const upstreamPath = requestUrl.pathname.replace(/^\/weatherfront-embed\/?/, "/") || "/";
-  const upstream = new URL(upstreamPath, WEATHERFRONT_ORIGIN);
+  const upstream = new URL(upstreamPath, WEATHERFRONT_APP_ORIGIN);
   upstream.search = requestUrl.search;
   return upstream;
-}
-
-function buildForwardHeaders(request: Request): Headers {
-  const headers = new Headers();
-  request.headers.forEach((value, key) => {
-    if (!HOP_BY_HOP_HEADERS.has(key.toLowerCase())) {
-      headers.set(key, value);
-    }
-  });
-  headers.set("Host", "app.weatherfront.com");
-  headers.set("Origin", WEATHERFRONT_ORIGIN);
-  headers.set("Referer", `${WEATHERFRONT_ORIGIN}/`);
-  return headers;
-}
-
-function buildResponseHeaders(upstream: Response, contentType?: string): Headers {
-  const headers = new Headers();
-  upstream.headers.forEach((value, key) => {
-    const lower = key.toLowerCase();
-    if (HOP_BY_HOP_HEADERS.has(lower) || STRIP_RESPONSE_HEADERS.has(lower)) {
-      return;
-    }
-
-    if (lower === "location") {
-      headers.set(key, rewriteLocationHeader(value));
-      return;
-    }
-
-    headers.set(key, value);
-  });
-
-  if (contentType) {
-    headers.set("Content-Type", contentType);
-  }
-
-  return headers;
-}
-
-function rewriteLocationHeader(location: string): string {
-  try {
-    const parsed = new URL(location, WEATHERFRONT_ORIGIN);
-    if (parsed.origin !== WEATHERFRONT_ORIGIN) {
-      return location;
-    }
-    return `${PROXY_PREFIX}${parsed.pathname}${parsed.search}${parsed.hash}`;
-  } catch {
-    return location;
-  }
 }
 
 function rewriteRootRelativeUrls(html: string): string {
@@ -86,19 +26,28 @@ function rewriteRootRelativeUrls(html: string): string {
 
 function injectProxyBootstrap(html: string): string {
   const bootstrap =
-    '<base href="/weatherfront-embed/">' +
+    `<base href="${WEATHERFRONT_EMBED_PREFIX}/">` +
     '<script src="/js/weatherfront-geolocation-shim.js"></script>';
   return html.replace(/<head(\s[^>]*)?>/i, (match) => `${match}${bootstrap}`);
 }
 
-export async function handleWeatherfrontProxy(request: Request): Promise<Response> {
+export async function handleWeatherfrontUpstreamRoute(request: Request): Promise<Response | null> {
+  const match = matchWeatherfrontUpstream(new URL(request.url).pathname);
+  if (!match) {
+    return null;
+  }
+
+  return proxyWeatherfrontUpstream(request, match.origin, match.upstreamPath, match.prefix);
+}
+
+export async function handleWeatherfrontEmbed(request: Request): Promise<Response> {
   const requestUrl = new URL(request.url);
-  const upstreamUrl = buildUpstreamUrl(requestUrl);
+  const upstreamUrl = buildEmbedUpstreamUrl(requestUrl);
   const method = request.method.toUpperCase();
 
   const upstreamResponse = await fetch(upstreamUrl.toString(), {
     method,
-    headers: buildForwardHeaders(request),
+    headers: buildForwardHeaders(request, "app.weatherfront.com", WEATHERFRONT_APP_ORIGIN),
     body: method === "GET" || method === "HEAD" ? undefined : request.body,
     redirect: "manual",
   });
@@ -106,7 +55,10 @@ export async function handleWeatherfrontProxy(request: Request): Promise<Respons
   if (upstreamResponse.status >= 300 && upstreamResponse.status < 400) {
     const location = upstreamResponse.headers.get("Location");
     if (location) {
-      return Response.redirect(rewriteLocationHeader(location), upstreamResponse.status);
+      return Response.redirect(
+        rewriteLocationHeader(location, WEATHERFRONT_APP_ORIGIN, WEATHERFRONT_EMBED_PREFIX),
+        upstreamResponse.status,
+      );
     }
   }
 
@@ -118,12 +70,22 @@ export async function handleWeatherfrontProxy(request: Request): Promise<Respons
 
     return new Response(html, {
       status: upstreamResponse.status,
-      headers: buildResponseHeaders(upstreamResponse, "text/html; charset=UTF-8"),
+      headers: buildProxyResponseHeaders(upstreamResponse, { contentType: "text/html; charset=UTF-8" }),
+    });
+  }
+
+  if (isJavaScriptContentType(contentType)) {
+    const body = rewriteWeatherfrontUrls(await upstreamResponse.text());
+    return new Response(body, {
+      status: upstreamResponse.status,
+      headers: buildProxyResponseHeaders(upstreamResponse, { contentType }),
     });
   }
 
   return new Response(upstreamResponse.body, {
     status: upstreamResponse.status,
-    headers: buildResponseHeaders(upstreamResponse),
+    headers: buildProxyResponseHeaders(upstreamResponse, {
+      locationRewrite: { upstreamOrigin: WEATHERFRONT_APP_ORIGIN, proxyPrefix: WEATHERFRONT_EMBED_PREFIX },
+    }),
   });
 }

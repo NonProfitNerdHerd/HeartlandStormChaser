@@ -1,6 +1,48 @@
 (function () {
   "use strict";
 
+  var UPSTREAM_REWRITES = [
+    ["https://platform.weatherfront.com", "/weatherfront-api"],
+    ["https://cdn.wxfront.com", "/weatherfront-cdn"],
+    ["https://static.wxfront.com", "/weatherfront-static"],
+    ["https://api.wxfront.com", "/weatherfront-wx-api"],
+  ];
+
+  function rewriteRequestUrl(url) {
+    if (typeof url !== "string") return url;
+    for (var i = 0; i < UPSTREAM_REWRITES.length; i++) {
+      var from = UPSTREAM_REWRITES[i][0];
+      var to = UPSTREAM_REWRITES[i][1];
+      if (url.startsWith(from)) {
+        return to + url.slice(from.length);
+      }
+    }
+    return url;
+  }
+
+  var originalFetch = window.fetch.bind(window);
+  window.fetch = function (input, init) {
+    if (typeof input === "string") {
+      return originalFetch(rewriteRequestUrl(input), init);
+    }
+    if (input instanceof Request) {
+      var rewritten = rewriteRequestUrl(input.url);
+      if (rewritten !== input.url) {
+        input = new Request(rewritten, input);
+      }
+    }
+    return originalFetch(input, init);
+  };
+
+  if (window.XMLHttpRequest) {
+    var originalOpen = XMLHttpRequest.prototype.open;
+    XMLHttpRequest.prototype.open = function (method, url) {
+      var args = Array.prototype.slice.call(arguments);
+      args[1] = rewriteRequestUrl(String(url));
+      return originalOpen.apply(this, args);
+    };
+  }
+
   var REFRESH_MS = 5000;
   var cachedLocation = null;
   var watches = new Map();
