@@ -8,6 +8,11 @@ import { handleHealth } from "./routes/health";
 import { handleOverlays } from "./routes/overlays";
 import { handleWarnings } from "./routes/warnings";
 import { handleWeather } from "./routes/weather";
+import {
+  handleWeatherfrontAuthCallback,
+  handleWeatherfrontEmbed,
+  handleWeatherfrontUpstreamRoute,
+} from "./routes/weatherfront-proxy";
 
 export interface Env {
   ASSETS: Fetcher;
@@ -59,6 +64,19 @@ export default {
 
     if (url.pathname.startsWith("/api/geocode")) {
       return handleGeocode(request);
+    }
+
+    if (url.pathname === "/auth/callback") {
+      return handleWeatherfrontAuthCallback(request);
+    }
+
+    if (url.pathname === "/weatherfront-embed" || url.pathname.startsWith("/weatherfront-embed/")) {
+      return handleWeatherfrontEmbed(request);
+    }
+
+    const weatherfrontUpstream = await handleWeatherfrontUpstreamRoute(request);
+    if (weatherfrontUpstream) {
+      return weatherfrontUpstream;
     }
 
     return env.ASSETS.fetch(request);

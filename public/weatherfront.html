@@ -54,9 +54,8 @@
       </div>
 
       <p class="weatherfront-hint" id="weatherfront-hint">
-        WeatherFront loads directly from app.weatherfront.com. Browser location is blocked in the
-        embed so Windows location is not used — pin or search in WeatherFront using the platform
-        coordinates above.
+        WeatherFront uses platform GPS from your chase device, not Windows browser location. Sign in
+        inside WeatherFront if prompted for a subscription.
       </p>
 
       <div class="weatherfront-frame-wrap">
@@ -64,8 +63,8 @@
           <iframe
             id="weatherfront-frame"
             title="WeatherFront"
-            src="https://app.weatherfront.com/"
-            allow="fullscreen"
+            src="/weatherfront-embed/"
+            allow="geolocation; fullscreen"
             referrerpolicy="no-referrer-when-downgrade"
           ></iframe>
         </div>

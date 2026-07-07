@@ -99,7 +99,8 @@
       escapeHtml(platform.device_name) +
       " · " +
       latestCoordsText +
-      (location.speed_mph != null ? " · " + formatNumber(location.speed_mph, 1) + " mph" : "");
+      (location.speed_mph != null ? " · " + formatNumber(location.speed_mph, 1) + " mph" : "") +
+      " · platform GPS active";
 
     setCopyEnabled(true);
   }
