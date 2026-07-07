@@ -43,19 +43,29 @@
           </select>
         </label>
 
+        <button type="button" class="btn btn--secondary" id="copy-gps-btn" disabled>
+          Copy platform coords
+        </button>
+
         <div class="weatherfront-controls__status">
           <span class="badge badge--muted" id="gps-status-badge">GPS —</span>
           <span class="weatherfront-controls__coords" id="gps-coords">Loading platform GPS…</span>
         </div>
       </div>
 
+      <p class="weatherfront-hint" id="weatherfront-hint">
+        WeatherFront loads directly from app.weatherfront.com. Browser location is blocked in the
+        embed so Windows location is not used — pin or search in WeatherFront using the platform
+        coordinates above.
+      </p>
+
       <div class="weatherfront-frame-wrap">
         <div class="weatherfront-frame-scaler" id="frame-scaler">
           <iframe
             id="weatherfront-frame"
             title="WeatherFront"
-            src="/weatherfront-embed/"
-            allow="geolocation; fullscreen"
+            src="https://app.weatherfront.com/"
+            allow="fullscreen"
             referrerpolicy="no-referrer-when-downgrade"
           ></iframe>
         </div>

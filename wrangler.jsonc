@@ -12,19 +12,7 @@
   "assets": {
     "directory": "./public",
     "binding": "ASSETS",
-    "run_worker_first": [
-      "/api/*",
-      "/weatherfront-embed",
-      "/weatherfront-embed/*",
-      "/weatherfront-api",
-      "/weatherfront-api/*",
-      "/weatherfront-cdn",
-      "/weatherfront-cdn/*",
-      "/weatherfront-static",
-      "/weatherfront-static/*",
-      "/weatherfront-wx-api",
-      "/weatherfront-wx-api/*"
-    ]
+    "run_worker_first": ["/api/*"]
   },
   "d1_databases": [
     {
