@@ -1,0 +1,96 @@
+/* WeatherFront embedded page */
+
+.weatherfront-body {
+  overflow: hidden;
+}
+
+.weatherfront-main {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - 3.25rem);
+  max-width: none;
+  padding: 0;
+}
+
+.weatherfront-controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.65rem 1.25rem;
+  border-bottom: 1px solid var(--color-border);
+  background: var(--color-bg-card);
+}
+
+.weatherfront-controls__status {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  margin-left: auto;
+}
+
+.weatherfront-controls__coords {
+  font-family: var(--font-mono);
+  font-size: 0.8125rem;
+  color: var(--color-text-muted);
+}
+
+.weatherfront-control {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.weatherfront-control--checkbox {
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+  cursor: pointer;
+  user-select: none;
+}
+
+.weatherfront-control--checkbox input {
+  accent-color: var(--color-accent);
+}
+
+.weatherfront-control__label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-text-muted);
+}
+
+.weatherfront-select {
+  min-width: 6.5rem;
+  padding: 0.5rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: var(--color-text);
+  font: inherit;
+}
+
+.weatherfront-frame-wrap {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #000;
+}
+
+.weatherfront-frame-scaler {
+  width: 100%;
+  height: 100%;
+  --wf-scale: 1;
+}
+
+.weatherfront-frame-scaler iframe {
+  width: calc(100% / var(--wf-scale));
+  height: calc(100% / var(--wf-scale));
+  transform: scale(var(--wf-scale));
+  transform-origin: 0 0;
+  border: 0;
+  display: block;
+  background: #000;
+}
