@@ -55,14 +55,32 @@ npm install
 npm start
 ```
 
-Optional forever-ish loop in a chase vehicle:
+### Always-on (home PC — recommended)
+
+So Broadcast Control stays reachable when you go live without warning:
 
 ```powershell
 cd services\obs-listener
-npm start
+powershell -ExecutionPolicy Bypass -File .\scripts\install-listener-autostart.ps1
 ```
 
-Keep this terminal open while broadcasting, or register a Windows Task Scheduler task that runs `npm start` at logon.
+That registers Task Scheduler jobs to:
+
+1. Start the OBS listener at Windows logon
+2. Start / keep a Cloudflare Quick Tunnel to `127.0.0.1:8791`
+3. Re-check both every 5 minutes (no-op if already healthy)
+4. If the Quick Tunnel hostname changes, sync `listener_url` in D1 via Wrangler
+
+Manual one-shots:
+
+```powershell
+.\scripts\ensure-listener.ps1
+.\scripts\ensure-quick-tunnel.ps1
+```
+
+Remove with `.\scripts\uninstall-listener-autostart.ps1`.
+
+For chase-day reliability, prefer a **named Cloudflare Tunnel** with a fixed hostname instead of Quick Tunnel (`*.trycloudflare.com`). Quick Tunnel URLs can change on restart; the ensure script syncs D1 when that happens, but a named tunnel avoids the churn.
 
 ### Confirm connectivity
 

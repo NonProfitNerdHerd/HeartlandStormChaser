@@ -33,9 +33,9 @@ export function renderSettings(container, settings, ui, onSave, onTest, youtube,
   container.innerHTML = `
     <form class="bcc-settings" data-bcc-settings-form>
       <p class="bcc-settings__help">
-        Run the OBS listener on the Desktop PC that hosts main OBS, then expose it with a Cloudflare Quick Tunnel
-        (<code>services/obs-listener/scripts/start-quick-tunnel.ps1</code>). Paste that HTTPS URL here with the matching listener token.
-        Passwords are write-only: leave blank to keep the current value.
+        Run the OBS listener on the Desktop PC that hosts main OBS, then expose it with a Cloudflare tunnel
+        (<code>services/obs-listener/scripts/install-listener-autostart.ps1</code> keeps listener + Quick Tunnel alive).
+        Prefer a named tunnel with a fixed hostname for chase days. Passwords are write-only: leave blank to keep the current value.
       </p>
       <div class="bcc-settings__grid">
         <label class="bcc-settings__field">
