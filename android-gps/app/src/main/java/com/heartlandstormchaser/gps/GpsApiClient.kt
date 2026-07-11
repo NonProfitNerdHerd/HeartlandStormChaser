@@ -271,7 +271,7 @@ class GpsApiClient(
             put("device_id", deviceId)
         }
 
-        return postJson("/api/gps/platform", payload, auth = false) { json, _ ->
+        return postJson("/api/gps/platform", payload, auth = true) { json, _ ->
             val platform = json.optJSONObject("platform_source")
             val activeId = platform?.optString("id").orEmpty()
             PlatformResult(
@@ -499,7 +499,7 @@ class GpsApiClient(
             }
         }
 
-        return postJson("/api/chases/$chaseId/expenses", payload, auth = false) { json, _ ->
+        return postJson("/api/chases/$chaseId/expenses", payload, auth = true) { json, _ ->
             val expenseJson = json.optJSONObject("expense")
                 ?: return@postJson ChaseExpenseResult(success = false, error = "Expense missing from response")
             ChaseExpenseResult(success = true, expense = parseChaseExpense(expenseJson))
