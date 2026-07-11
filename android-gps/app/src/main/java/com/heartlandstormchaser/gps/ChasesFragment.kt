@@ -89,7 +89,7 @@ class ChasesFragment : Fragment() {
     private fun refreshChases() {
         binding.chasesProgress.isVisible = true
 
-        viewLifecycleOwner.viewLifecycleOwner.lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val activeResult = withContext(Dispatchers.IO) { client.fetchActiveChase() }
             val listResult = withContext(Dispatchers.IO) { client.fetchAllChases() }
