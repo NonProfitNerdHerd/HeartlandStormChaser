@@ -47,6 +47,15 @@
           Copy platform coords
         </button>
 
+        <a
+          class="btn btn--secondary"
+          id="weatherfront-open-external"
+          href="https://app.weatherfront.com"
+          target="_blank"
+          rel="noopener noreferrer"
+          >Open WeatherFront</a
+        >
+
         <div class="weatherfront-controls__status">
           <span class="badge badge--muted" id="gps-status-badge">GPS —</span>
           <span class="weatherfront-controls__coords" id="gps-coords">Loading platform GPS…</span>
@@ -54,18 +63,43 @@
       </div>
 
       <p class="weatherfront-hint" id="weatherfront-hint">
-        WeatherFront uses platform GPS from your chase device, not Windows browser location. Sign in
-        inside WeatherFront if prompted for a subscription.
+        WeatherFront loads directly from app.weatherfront.com. Platform GPS is shown here — use
+        Copy platform coords if WeatherFront asks for a location. Sign in inside WeatherFront for
+        your subscription.
       </p>
 
       <div class="weatherfront-frame-wrap">
+        <div
+          class="weatherfront-error"
+          id="weatherfront-error"
+          hidden
+          role="alert"
+        >
+          <p class="weatherfront-error__title">WeatherFront could not be loaded in this page.</p>
+          <p class="weatherfront-error__detail" id="weatherfront-error-detail"></p>
+          <p class="weatherfront-error__actions">
+            <button type="button" class="btn btn--secondary" id="weatherfront-retry-btn">
+              Retry
+            </button>
+            <a
+              class="btn btn--secondary"
+              href="https://app.weatherfront.com"
+              target="_blank"
+              rel="noopener noreferrer"
+              >Open in new tab</a
+            >
+          </p>
+          <pre class="weatherfront-error__diag" id="weatherfront-error-diag" hidden></pre>
+        </div>
+
         <div class="weatherfront-frame-scaler" id="frame-scaler">
           <iframe
             id="weatherfront-frame"
             title="WeatherFront"
-            src="/weatherfront-embed/"
-            allow="geolocation; fullscreen"
+            src="https://app.weatherfront.com"
+            allow="geolocation; fullscreen; clipboard-read; clipboard-write"
             referrerpolicy="no-referrer-when-downgrade"
+            loading="eager"
           ></iframe>
         </div>
       </div>

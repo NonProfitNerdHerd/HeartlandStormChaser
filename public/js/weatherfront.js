@@ -1,15 +1,28 @@
 (function () {
   var REFRESH_INTERVAL_MS = 10000;
+  var LOAD_TIMEOUT_MS = 25000;
   var SCALE_STORAGE_KEY = "weatherfront-scale";
+  var WEATHERFRONT_URL = "https://app.weatherfront.com";
+  var IS_DEV =
+    window.location.hostname === "localhost" ||
+    window.location.hostname === "127.0.0.1" ||
+    (window.location.hostname || "").includes("workers.dev");
 
   var scaleSelect = document.getElementById("scale-select");
   var copyGpsBtn = document.getElementById("copy-gps-btn");
   var gpsStatusBadge = document.getElementById("gps-status-badge");
   var gpsCoords = document.getElementById("gps-coords");
   var frameScaler = document.getElementById("frame-scaler");
+  var frame = document.getElementById("weatherfront-frame");
+  var errorEl = document.getElementById("weatherfront-error");
+  var errorDetail = document.getElementById("weatherfront-error-detail");
+  var errorDiag = document.getElementById("weatherfront-error-diag");
+  var retryBtn = document.getElementById("weatherfront-retry-btn");
 
   var pollTimer = null;
+  var loadTimer = null;
   var latestCoordsText = null;
+  var frameLoaded = false;
 
   function statusBadgeClass(status) {
     if (status === "LIVE") return "badge badge--success";
@@ -65,6 +78,61 @@
     } catch (_error) {
       window.prompt("Copy platform coordinates:", latestCoordsText);
     }
+  }
+
+  function hideError() {
+    if (errorEl) errorEl.hidden = true;
+    if (frameScaler) frameScaler.hidden = false;
+  }
+
+  function showError(message, diagnostic) {
+    if (!errorEl) return;
+    frameLoaded = false;
+    if (frameScaler) frameScaler.hidden = true;
+    errorEl.hidden = false;
+    if (errorDetail) errorDetail.textContent = message;
+    if (errorDiag) {
+      if (IS_DEV && diagnostic) {
+        errorDiag.hidden = false;
+        errorDiag.textContent = diagnostic;
+      } else {
+        errorDiag.hidden = true;
+        errorDiag.textContent = "";
+      }
+    }
+  }
+
+  function clearLoadTimer() {
+    if (loadTimer) {
+      clearTimeout(loadTimer);
+      loadTimer = null;
+    }
+  }
+
+  function armLoadWatch() {
+    clearLoadTimer();
+    frameLoaded = false;
+    hideError();
+    loadTimer = setTimeout(function () {
+      if (frameLoaded) return;
+      showError(
+        "WeatherFront did not finish loading. It may be blocked from embedding, or the network request failed.",
+        [
+          "mode=direct-iframe",
+          "src=" + WEATHERFRONT_URL,
+          "timeout_ms=" + LOAD_TIMEOUT_MS,
+          "note=Cross-origin iframe; parent cannot read WF DOM, Mapbox, or cookies.",
+          "note=Previous reverse-proxy mode broke Mapbox tiles (token/origin) and login assets.",
+        ].join("\n"),
+      );
+    }, LOAD_TIMEOUT_MS);
+  }
+
+  function reloadFrame() {
+    if (!frame) return;
+    hideError();
+    armLoadWatch();
+    frame.src = WEATHERFRONT_URL + (WEATHERFRONT_URL.indexOf("?") >= 0 ? "&" : "?") + "_=" + Date.now();
   }
 
   function renderPlatformStatus(data) {
@@ -132,6 +200,26 @@
   });
 
   copyGpsBtn.addEventListener("click", copyPlatformCoords);
+
+  if (retryBtn) {
+    retryBtn.addEventListener("click", reloadFrame);
+  }
+
+  if (frame) {
+    frame.addEventListener("load", function () {
+      frameLoaded = true;
+      clearLoadTimer();
+      hideError();
+    });
+    frame.addEventListener("error", function () {
+      clearLoadTimer();
+      showError(
+        "The browser reported an error loading WeatherFront.",
+        "mode=direct-iframe\nsrc=" + WEATHERFRONT_URL + "\nevent=iframe.error",
+      );
+    });
+    armLoadWatch();
+  }
 
   loadScalePreference();
   refreshPlatformGps();
