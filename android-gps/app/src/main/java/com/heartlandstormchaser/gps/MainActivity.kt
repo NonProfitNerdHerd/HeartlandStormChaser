@@ -28,6 +28,7 @@ class MainActivity : AppCompatActivity() {
         supportActionBar?.subtitle = "v${BuildConfig.VERSION_NAME} (${BuildConfig.VERSION_CODE})"
 
         binding.mainPager.adapter = MainPagerAdapter(this)
+        binding.mainPager.offscreenPageLimit = 1
         TabLayoutMediator(binding.mainTabs, binding.mainPager) { tab, position ->
             tab.text = when (position) {
                 0 -> getString(R.string.tab_warnings)

@@ -64,12 +64,15 @@ class WarningsFragment : Fragment() {
             binding.warningsProgress.isVisible = true
         }
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.fetchPlatformWarnings(force = force)
             }
 
+            if (_binding == null || !isAdded) {
+                return@launch
+            }
             binding.warningsProgress.isVisible = false
             binding.warningsRefresh.isRefreshing = false
 

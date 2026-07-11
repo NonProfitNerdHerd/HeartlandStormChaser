@@ -845,17 +845,20 @@ class GpsApiClient(
                 if (!response.isSuccessful) {
                     val message = json?.optString("error")?.takeIf { it.isNotBlank() }
                         ?: "Request failed (${response.code})"
+                    @Suppress("UNCHECKED_CAST")
                     return failureFor(request, message) as T
                 }
 
                 if (json == null || !json.optBoolean("ok", false)) {
                     val message = json?.optString("error") ?: "Invalid server response"
+                    @Suppress("UNCHECKED_CAST")
                     return failureFor(request, message) as T
                 }
 
                 onSuccess(json, response.code)
             }
         } catch (error: Exception) {
+            @Suppress("UNCHECKED_CAST")
             failureFor(request, error.message ?: "Network error") as T
         }
     }
@@ -890,6 +893,8 @@ class GpsApiClient(
                 ChaseVoidResult(success = false, error = message)
             request.url.encodedPath.contains("/expenses") ->
                 ChaseExpenseResult(success = false, error = message)
+            request.url.encodedPath.contains("/geocode") ->
+                GeocodeSuggestionsResult(success = false, error = message)
             request.url.encodedPath.contains("/chases/") && request.method == "GET" ->
                 ChaseDetailResult(success = false, error = message)
             request.url.encodedPath.contains("/chases/") && request.method == "PUT" ->

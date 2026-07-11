@@ -65,8 +65,11 @@
 
   function formatUpdated(iso) {
     if (!iso) return "—";
+    if (window.HeartlandTime && typeof window.HeartlandTime.formatCentral === "function") {
+      return window.HeartlandTime.formatCentral(iso);
+    }
     try {
-      return new Date(iso).toLocaleString();
+      return new Date(iso).toLocaleString("en-US", { timeZone: "America/Chicago" });
     } catch {
       return iso;
     }

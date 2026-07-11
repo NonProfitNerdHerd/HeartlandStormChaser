@@ -354,11 +354,10 @@ async function handleUpdate(request: Request, env: Env): Promise<Response> {
     .bind(device.id)
     .first<{ received_at_utc: string }>();
 
+  const lastHistoryAt = parseUtcTimestamp(lastHistory?.received_at_utc);
   const shouldInsertHistory =
-    !lastHistory?.received_at_utc ||
-    (Date.now() - Date.parse(lastHistory.received_at_utc.replace(" ", "T") + "Z")) /
-      1000 >=
-      GPS_HISTORY_INTERVAL_SECONDS;
+    lastHistoryAt == null ||
+    (Date.now() - lastHistoryAt) / 1000 >= GPS_HISTORY_INTERVAL_SECONDS;
 
   if (shouldInsertHistory) {
     await env.DB.prepare(

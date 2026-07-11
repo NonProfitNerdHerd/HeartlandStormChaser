@@ -89,11 +89,14 @@ class ChasesFragment : Fragment() {
     private fun refreshChases() {
         binding.chasesProgress.isVisible = true
 
-        lifecycleScope.launch {
+        viewLifecycleOwner.viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val activeResult = withContext(Dispatchers.IO) { client.fetchActiveChase() }
             val listResult = withContext(Dispatchers.IO) { client.fetchAllChases() }
 
+            if (_binding == null || !isAdded) {
+                return@launch
+            }
             binding.chasesProgress.isVisible = false
 
             if (!activeResult.success && !listResult.success) {
@@ -129,6 +132,9 @@ class ChasesFragment : Fragment() {
     private suspend fun loadActiveChaseDetail(chaseId: String) {
         val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
         val detailResult = withContext(Dispatchers.IO) { client.fetchChaseDetail(chaseId) }
+        if (_binding == null || !isAdded) {
+            return
+        }
         if (detailResult.success && detailResult.detail != null) {
             activeChase = detailResult.detail.chase
             activeExpenses = detailResult.detail.expenses
@@ -188,14 +194,14 @@ class ChasesFragment : Fragment() {
             return
         }
 
-        durationJob = lifecycleScope.launch {
+        durationJob = viewLifecycleOwner.lifecycleScope.launch {
             while (isActive) {
                 updateDurationDisplay()
                 delay(1_000)
             }
         }
 
-        refreshJob = lifecycleScope.launch {
+        refreshJob = viewLifecycleOwner.lifecycleScope.launch {
             while (isActive) {
                 delay(10_000)
                 val current = activeChase ?: break
@@ -209,7 +215,8 @@ class ChasesFragment : Fragment() {
 
     private fun updateDurationDisplay() {
         val chase = activeChase ?: return
-        binding.activeChaseDurationText.text = getString(
+        val b = _binding ?: return
+        b.activeChaseDurationText.text = getString(
             R.string.chase_duration_elapsed,
             formatChaseDuration(chase.startTime, chase.endTime),
         )
@@ -255,9 +262,12 @@ class ChasesFragment : Fragment() {
 
     private fun startChase(name: String) {
         binding.chasesProgress.isVisible = true
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) { client.createChase(name) }
+            if (_binding == null || !isAdded) {
+                return@launch
+            }
             binding.chasesProgress.isVisible = false
 
             if (!result.success || result.chase == null) {
@@ -281,10 +291,13 @@ class ChasesFragment : Fragment() {
         val newStatus = if (chase.status == "paused") "active" else "paused"
 
         binding.chasesProgress.isVisible = true
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.updateChase(chase.id, status = newStatus)
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             binding.chasesProgress.isVisible = false
 
@@ -318,9 +331,12 @@ class ChasesFragment : Fragment() {
         val chase = activeChase ?: return
 
         binding.chasesProgress.isVisible = true
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) { client.completeChase(chase.id) }
+            if (_binding == null || !isAdded) {
+                return@launch
+            }
             binding.chasesProgress.isVisible = false
 
             if (!result.success) {
@@ -345,10 +361,13 @@ class ChasesFragment : Fragment() {
         val notes = binding.activeChaseNotesInput.text?.toString().orEmpty()
 
         binding.chasesProgress.isVisible = true
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.updateChase(chase.id, notes = notes)
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             binding.chasesProgress.isVisible = false
 
@@ -425,10 +444,13 @@ class ChasesFragment : Fragment() {
 
     private fun addExpense(chaseId: String, category: String, amount: Double, description: String) {
         binding.chasesProgress.isVisible = true
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.addExpense(chaseId, category, amount, description)
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             binding.chasesProgress.isVisible = false
 
@@ -450,10 +472,13 @@ class ChasesFragment : Fragment() {
         description: String,
     ) {
         binding.chasesProgress.isVisible = true
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.updateExpense(chaseId, expenseId, category, amount, description)
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             binding.chasesProgress.isVisible = false
 
@@ -469,9 +494,12 @@ class ChasesFragment : Fragment() {
 
     private fun deleteExpense(chaseId: String, expenseId: String) {
         binding.chasesProgress.isVisible = true
-        lifecycleScope.launch {
+        viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) { client.deleteExpense(chaseId, expenseId) }
+            if (_binding == null || !isAdded) {
+                return@launch
+            }
             binding.chasesProgress.isVisible = false
 
             if (!result.success) {

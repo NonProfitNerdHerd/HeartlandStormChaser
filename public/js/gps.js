@@ -15,6 +15,9 @@
   var settingPlatform = false;
 
   function formatTimestamp(value) {
+    if (window.HeartlandTime && typeof window.HeartlandTime.formatCentral === "function") {
+      return window.HeartlandTime.formatCentral(value);
+    }
     if (!value) return "—";
     var normalized = value.includes("T") ? value : value.replace(" ", "T");
     var withZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized)
@@ -22,7 +25,7 @@
       : normalized + "Z";
     var date = new Date(withZone);
     if (Number.isNaN(date.getTime())) return value;
-    return date.toLocaleString();
+    return date.toLocaleString("en-US", { timeZone: "America/Chicago" });
   }
 
   function formatNumber(value, digits) {

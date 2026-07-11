@@ -65,9 +65,16 @@
 
   function formatCheckedAt(isoOrSql) {
     if (!isoOrSql) return "never";
-    var d = new Date(isoOrSql.replace(" ", "T") + (isoOrSql.includes("T") ? "" : "Z"));
+    if (window.HeartlandTime && typeof window.HeartlandTime.formatCentral === "function") {
+      return window.HeartlandTime.formatCentral(isoOrSql);
+    }
+    var normalized = String(isoOrSql).includes("T")
+      ? String(isoOrSql)
+      : String(isoOrSql).replace(" ", "T");
+    var withZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized) ? normalized : normalized + "Z";
+    var d = new Date(withZone);
     if (Number.isNaN(d.getTime())) return isoOrSql;
-    return d.toLocaleString();
+    return d.toLocaleString("en-US", { timeZone: "America/Chicago" });
   }
 
   function updateRefreshStatus(extra) {

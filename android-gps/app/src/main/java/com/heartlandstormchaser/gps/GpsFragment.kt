@@ -22,8 +22,6 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
-import java.text.DateFormat
-import java.util.Date
 
 class GpsFragment : Fragment() {
     private var _binding: FragmentGpsBinding? = null
@@ -174,10 +172,13 @@ class GpsFragment : Fragment() {
 
     private fun setPlatformSource() {
         binding.setPlatformButton.isEnabled = false
-        lifecycleScope.launch {
-            val client = GpsApiClient(preferences.serverUrl)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.setPlatformSource(preferences.deviceId)
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             binding.setPlatformButton.isEnabled = true
             preferences.isPlatformSource = result.success && result.isThisDevicePlatform
@@ -189,10 +190,13 @@ class GpsFragment : Fragment() {
     }
 
     private fun refreshPlatformStatus() {
-        lifecycleScope.launch {
-            val client = GpsApiClient(preferences.serverUrl)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.fetchPlatformStatus(preferences.deviceId)
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             if (result.success) {
                 preferences.isPlatformSource = result.isThisDevicePlatform
@@ -202,10 +206,13 @@ class GpsFragment : Fragment() {
     }
 
     private fun refreshWeather() {
-        lifecycleScope.launch {
-            val client = GpsApiClient(preferences.serverUrl)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.fetchPlatformWeather()
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             if (!result.success) {
                 binding.weatherSummaryText.text = result.error ?: getString(R.string.weather_unavailable)
@@ -242,7 +249,7 @@ class GpsFragment : Fragment() {
                 append(getString(R.string.weather_gusts, formatNullable(weather.windGustsMph, suffix = " mph")))
                 if (!weather.observationAt.isNullOrBlank()) {
                     append('\n')
-                    append(getString(R.string.weather_updated, weather.observationAt))
+                    append(getString(R.string.weather_updated, CentralTime.formatIso(weather.observationAt)))
                 }
             }
         }
@@ -346,10 +353,7 @@ class GpsFragment : Fragment() {
     }
 
     private fun formatLastSent(lastSentAtMillis: Long): String {
-        if (lastSentAtMillis <= 0L) {
-            return "—"
-        }
-        return DateFormat.getDateTimeInstance().format(Date(lastSentAtMillis))
+        return CentralTime.formatMillis(lastSentAtMillis)
     }
 
     private fun hasLocationPermissions(): Boolean {

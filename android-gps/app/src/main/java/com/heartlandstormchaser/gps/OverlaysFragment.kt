@@ -95,7 +95,7 @@ class OverlaysFragment : Fragment() {
 
     private fun scheduleLocationSuggestions(query: String, immediate: Boolean = false) {
         suggestJob?.cancel()
-        suggestJob = lifecycleScope.launch {
+        suggestJob = viewLifecycleOwner.lifecycleScope.launch {
             if (!immediate) {
                 delay(300)
             }
@@ -112,7 +112,11 @@ class OverlaysFragment : Fragment() {
 
         val local = UsCitySuggestions.filter(trimmed, limit = 8).map { it.label }
         val remoteResult = withContext(Dispatchers.IO) {
-            GpsApiClient(preferences.serverUrl).fetchGeocodeSuggestions(trimmed)
+            GpsApiClient(preferences.serverUrl, preferences.deviceToken)
+                .fetchGeocodeSuggestions(trimmed)
+        }
+        if (_binding == null || !isAdded) {
+            return
         }
         val remote = if (remoteResult.success) {
             remoteResult.suggestions.map { it.label }
@@ -187,13 +191,16 @@ class OverlaysFragment : Fragment() {
         }
 
         setLoading(true)
-        lifecycleScope.launch {
-            val client = GpsApiClient(preferences.serverUrl)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.updateOverlaySettings(
                     targetCity = target.city,
                     targetState = target.state,
                 )
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             setLoading(false)
 
@@ -240,10 +247,13 @@ class OverlaysFragment : Fragment() {
     private fun saveTicker() {
         val ticker = binding.tickerInput.text?.toString()?.trim().orEmpty()
         setLoading(true)
-        lifecycleScope.launch {
-            val client = GpsApiClient(preferences.serverUrl)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.updateOverlaySettings(tickerText = ticker)
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             setLoading(false)
 
@@ -259,10 +269,13 @@ class OverlaysFragment : Fragment() {
 
     private fun loadSettings() {
         setLoading(true)
-        lifecycleScope.launch {
-            val client = GpsApiClient(preferences.serverUrl)
+        viewLifecycleOwner.lifecycleScope.launch {
+            val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
             val result = withContext(Dispatchers.IO) {
                 client.fetchOverlaySettings()
+            }
+            if (_binding == null || !isAdded) {
+                return@launch
             }
             setLoading(false)
 
