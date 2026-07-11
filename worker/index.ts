@@ -105,18 +105,6 @@ export default {
       return weatherfrontUpstream;
     }
 
-    if (url.pathname === "/weatherfront") {
-      return Response.redirect(`${url.origin}/weatherfront.html`, 301);
-    }
-
-    if (url.pathname === "/weatherfront/" || url.pathname === "/weatherfront/index.html") {
-      return Response.redirect(`${url.origin}/weatherfront.html`, 301);
-    }
-
-    if (url.pathname === "/broadcast/control") {
-      return Response.redirect(`${url.origin}/broadcast/control/`, 301);
-    }
-
     return env.ASSETS.fetch(request);
   },
 } satisfies ExportedHandler<Env>;

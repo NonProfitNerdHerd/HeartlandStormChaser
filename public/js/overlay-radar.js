@@ -18,12 +18,8 @@
   var configMeta = document.getElementById("radar-config-meta");
   var configMessage = document.getElementById("radar-config-message");
 
-  var locationEl = document.getElementById("radar-location");
   var coordsEl = document.getElementById("radar-coords");
-  var gpsStatusEl = document.getElementById("radar-gps-status");
   var gpsUpdatedEl = document.getElementById("radar-gps-updated");
-  var speedEl = document.getElementById("radar-speed");
-  var headingEl = document.getElementById("radar-heading");
   var radarStatusEl = document.getElementById("radar-status");
   var radarFrameEl = document.getElementById("radar-frame");
 
@@ -95,12 +91,8 @@
 
   function applyVisibility(settings) {
     var mapFields = {
-      city: settings.show_city,
       coords: settings.show_coords,
-      status: settings.show_status,
       updated: settings.show_updated,
-      speed: settings.show_speed,
-      heading: settings.show_heading,
     };
     Object.keys(mapFields).forEach(function (key) {
       var row = document.querySelector('[data-field="' + key + '"]');
@@ -306,12 +298,8 @@
       if (el) el.value = String(values[name]);
     });
     var shows = {
-      overlay_radar_show_city: settings.show_city,
       overlay_radar_show_coords: settings.show_coords,
-      overlay_radar_show_status: settings.show_status,
       overlay_radar_show_updated: settings.show_updated,
-      overlay_radar_show_speed: settings.show_speed,
-      overlay_radar_show_heading: settings.show_heading,
     };
     Object.keys(shows).forEach(function (name) {
       var el = configForm.querySelector('[name="' + name + '"]');
@@ -402,24 +390,8 @@
       emptyEl.textContent = data.message || "Waiting for GPS location";
     }
 
-    var cityLabel =
-      platform.city && platform.state
-        ? platform.city + ", " + platform.state
-        : platform.city || platform.state || platform.device_name || "—";
-    locationEl.textContent = cityLabel;
     coordsEl.textContent = formatCoords(platform.latitude, platform.longitude);
-
-    var statusLabel = platform.status || "UNKNOWN";
-    if (!hasFix) statusLabel = "No fix";
-    gpsStatusEl.textContent = statusLabel;
-    setTone(gpsStatusEl, gpsTone(statusLabel));
-
     gpsUpdatedEl.textContent = formatUpdated(platform.received_at_utc || platform.timestamp_utc);
-    speedEl.textContent =
-      platform.speed_mph == null ? "—" : Math.round(Number(platform.speed_mph)) + " mph";
-    headingEl.textContent =
-      platform.heading_cardinal ||
-      (platform.heading_degrees != null ? Math.round(Number(platform.heading_degrees)) + "°" : "—");
 
     updateRadarHud();
 
@@ -484,29 +456,12 @@
         overlay_radar_zoom: String(fd.get("overlay_radar_zoom") || "8"),
         overlay_radar_opacity: String(fd.get("overlay_radar_opacity") || "0.65"),
         overlay_radar_map_style: String(fd.get("overlay_radar_map_style") || "dark"),
-        overlay_radar_show_city: configForm.querySelector('[name="overlay_radar_show_city"]')
-          .checked
-          ? "1"
-          : "0",
         overlay_radar_show_coords: configForm.querySelector('[name="overlay_radar_show_coords"]')
-          .checked
-          ? "1"
-          : "0",
-        overlay_radar_show_status: configForm.querySelector('[name="overlay_radar_show_status"]')
           .checked
           ? "1"
           : "0",
         overlay_radar_show_updated: configForm.querySelector(
           '[name="overlay_radar_show_updated"]',
-        ).checked
-          ? "1"
-          : "0",
-        overlay_radar_show_speed: configForm.querySelector('[name="overlay_radar_show_speed"]')
-          .checked
-          ? "1"
-          : "0",
-        overlay_radar_show_heading: configForm.querySelector(
-          '[name="overlay_radar_show_heading"]',
         ).checked
           ? "1"
           : "0",

@@ -15,10 +15,6 @@
     "run_worker_first": [
       "/api/*",
       "/auth/callback",
-      "/weatherfront",
-      "/weatherfront/",
-      "/weatherfront/index.html",
-      "/broadcast/control",
       "/weatherfront-embed",
       "/weatherfront-embed/*",
       "/weatherfront-api",

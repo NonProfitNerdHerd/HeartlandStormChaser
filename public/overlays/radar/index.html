@@ -16,29 +16,13 @@
       <div class="radar-map" id="radar-map" role="img" aria-label="Radar map centered on platform GPS"></div>
 
       <aside class="radar-hud" id="radar-hud">
-        <div class="radar-hud__row" data-field="city">
-          <span class="radar-hud__label">Location</span>
-          <span class="radar-hud__value" id="radar-location">—</span>
-        </div>
         <div class="radar-hud__row" data-field="coords">
           <span class="radar-hud__label">Coordinates</span>
           <span class="radar-hud__value" id="radar-coords">—</span>
         </div>
-        <div class="radar-hud__row" data-field="status">
-          <span class="radar-hud__label">GPS</span>
-          <span class="radar-hud__value" id="radar-gps-status">—</span>
-        </div>
         <div class="radar-hud__row" data-field="updated">
           <span class="radar-hud__label">GPS updated</span>
           <span class="radar-hud__value" id="radar-gps-updated">—</span>
-        </div>
-        <div class="radar-hud__row" data-field="speed">
-          <span class="radar-hud__label">Speed</span>
-          <span class="radar-hud__value" id="radar-speed">—</span>
-        </div>
-        <div class="radar-hud__row" data-field="heading">
-          <span class="radar-hud__label">Heading</span>
-          <span class="radar-hud__value" id="radar-heading">—</span>
         </div>
         <div class="radar-hud__row radar-hud__row--radar">
           <span class="radar-hud__label">Radar</span>
@@ -81,12 +65,8 @@
           </select>
         </label>
         <div class="radar-config__checks">
-          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_city" checked /> Show city / state</label>
           <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_coords" checked /> Show coordinates</label>
-          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_status" checked /> Show GPS status</label>
           <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_updated" checked /> Show last GPS update</label>
-          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_speed" checked /> Show speed</label>
-          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_heading" checked /> Show heading</label>
         </div>
         <p class="radar-config__meta" id="radar-config-meta">Polling status: —</p>
         <div class="radar-config__actions">

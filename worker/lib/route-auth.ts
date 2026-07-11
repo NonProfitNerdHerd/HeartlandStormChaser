@@ -9,10 +9,21 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/me",
   "/api/gps/pair",
   "/api/gps/health",
+  "/api/gps/platform",
   "/api/overlay/",
   "/api/overlays/",
   "/api/broadcast/agent-config",
   "/api/broadcast/youtube/oauth/callback",
+];
+
+/** WeatherFront proxy + embed paths must never hit the HTML login redirect. */
+const WEATHERFRONT_PROXY_PREFIXES = [
+  "/weatherfront-embed",
+  "/weatherfront-api",
+  "/weatherfront-cdn",
+  "/weatherfront-static",
+  "/weatherfront-wx-api",
+  "/auth/callback",
 ];
 
 function isOverlayPagePath(pathname: string): boolean {
@@ -20,7 +31,13 @@ function isOverlayPagePath(pathname: string): boolean {
 }
 
 function isLoginPagePath(pathname: string): boolean {
-  return pathname === "/login.html";
+  return pathname === "/login.html" || pathname === "/login";
+}
+
+function isWeatherfrontProxyPath(pathname: string): boolean {
+  return WEATHERFRONT_PROXY_PREFIXES.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`),
+  );
 }
 
 function isStaticAssetPath(pathname: string): boolean {
@@ -44,7 +61,12 @@ function isStaticAssetPath(pathname: string): boolean {
 }
 
 function isProtectedPagePath(pathname: string): boolean {
-  if (isLoginPagePath(pathname) || isOverlayPagePath(pathname) || isStaticAssetPath(pathname)) {
+  if (
+    isLoginPagePath(pathname) ||
+    isOverlayPagePath(pathname) ||
+    isWeatherfrontProxyPath(pathname) ||
+    isStaticAssetPath(pathname)
+  ) {
     return false;
   }
 
