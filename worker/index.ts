@@ -11,6 +11,11 @@ import { handleHealth } from "./routes/health";
 import { handleOverlays } from "./routes/overlays";
 import { handleWarnings } from "./routes/warnings";
 import { handleWeather } from "./routes/weather";
+import {
+  handleWeatherfrontAuthCallback,
+  handleWeatherfrontEmbed,
+  handleWeatherfrontUpstreamRoute,
+} from "./routes/weatherfront-proxy";
 
 export interface Env {
   ASSETS: Fetcher;
@@ -87,8 +92,25 @@ export default {
       return handleBroadcast(request, env);
     }
 
+    if (url.pathname === "/auth/callback") {
+      return handleWeatherfrontAuthCallback(request);
+    }
+
+    if (url.pathname === "/weatherfront-embed" || url.pathname.startsWith("/weatherfront-embed/")) {
+      return handleWeatherfrontEmbed(request);
+    }
+
+    const weatherfrontUpstream = await handleWeatherfrontUpstreamRoute(request);
+    if (weatherfrontUpstream) {
+      return weatherfrontUpstream;
+    }
+
     if (url.pathname === "/weatherfront") {
-      return Response.redirect(`${url.origin}/weatherfront/`, 301);
+      return Response.redirect(`${url.origin}/weatherfront.html`, 301);
+    }
+
+    if (url.pathname === "/weatherfront/" || url.pathname === "/weatherfront/index.html") {
+      return Response.redirect(`${url.origin}/weatherfront.html`, 301);
     }
 
     if (url.pathname === "/broadcast/control") {
