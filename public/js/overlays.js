@@ -5,6 +5,17 @@
    */
   var OVERLAY_CATALOG = [
     {
+      id: "chase-laptop",
+      label: "ChaseLaptop",
+      title: "Chase laptop dashboard bar",
+      description:
+        "Full-width six-column chase bar with current location, heading, target, ETA, ceiling, temp, wind, and pressure for laptop/OBS scenes.",
+      path: "/overlays/chase-laptop.html",
+      previewQuery: "preview=1",
+      status: "live",
+      previewHeight: 176,
+    },
+    {
       id: "gps-weather",
       label: "GPS + Weather",
       title: "Platform GPS and weather panel",
@@ -36,6 +47,18 @@
       previewQuery: "preview=1",
       status: "live",
       previewHeight: 96,
+    },
+    {
+      id: "radar-gps",
+      label: "Radar + GPS",
+      title: "Platform GPS map with radar",
+      description:
+        "Map centered on the active platform GPS source with a looping CONUS Base Reflectivity radar (last ~2 hours / 24 frames, cached 3 days), location HUD, and controllable radar polling for OBS.",
+      path: "/overlays/radar/",
+      previewQuery: "preview=1",
+      configQuery: "config=1",
+      status: "live",
+      previewHeight: 280,
     },
   ];
 
@@ -91,6 +114,10 @@
         ? absoluteUrl(overlay.path, overlay.previewQuery)
         : null;
       var obsUrl = isLive ? absoluteUrl(overlay.path, null) : null;
+      var configUrl =
+        isLive && overlay.configQuery
+          ? absoluteUrl(overlay.path, overlay.configQuery)
+          : null;
       var statusClass =
         overlay.status === "live" ? "overlay-card__status--live" : "overlay-card__status--soon";
       var statusLabel = overlay.status === "live" ? "Live" : "Coming soon";
@@ -115,6 +142,11 @@
           '<a class="btn btn--secondary" href="' +
           escapeHtml(obsUrl) +
           '" target="_blank" rel="noopener noreferrer">Open overlay</a>' +
+          (configUrl
+            ? '<a class="btn btn--secondary" href="' +
+              escapeHtml(configUrl) +
+              '" target="_blank" rel="noopener noreferrer">Configure</a>'
+            : "") +
           "</div>" +
           '<p class="overlay-card__path">' +
           escapeHtml(overlay.path) +

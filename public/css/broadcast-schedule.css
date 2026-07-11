@@ -1,0 +1,376 @@
+/* Broadcast Schedule + Start Streaming workflow overlays (bolt-on; does not restyle BCC page) */
+
+.bcc-sched-dialog,
+.bcc-workflow-dialog {
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-lg);
+  padding: 0;
+  max-width: min(56rem, calc(100% - 1.5rem));
+  width: calc(100% - 1.5rem);
+  max-height: calc(100vh - 2rem);
+  overflow: auto;
+  background: var(--color-bg-card);
+  color: inherit;
+}
+
+.bcc-sched-dialog::backdrop,
+.bcc-workflow-dialog::backdrop {
+  background: rgb(0 0 0 / 0.5);
+}
+
+.bcc-dialog {
+  display: flex;
+  flex-direction: column;
+  gap: 0.85rem;
+  padding: 1rem 1.15rem 1.25rem;
+}
+
+.bcc-dialog__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+}
+
+.bcc-dialog__title {
+  margin: 0;
+  font-size: 1.15rem;
+}
+
+.bcc-sched-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.65rem;
+}
+
+.bcc-sched-toolbar__nav,
+.bcc-sched-toolbar__views {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.35rem;
+}
+
+.bcc-sched-selected {
+  margin: 0;
+  font-size: 0.875rem;
+  color: var(--color-text-muted);
+}
+
+.bcc-cal__weekdays,
+.bcc-cal__grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: 0.25rem;
+}
+
+.bcc-cal__weekdays {
+  margin-bottom: 0.25rem;
+  text-align: center;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.bcc-cal__cell {
+  position: relative;
+  min-height: 4.5rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  padding: 0.3rem 0.3rem 1.35rem;
+  display: flex;
+  flex-direction: column;
+  gap: 0.15rem;
+}
+
+.bcc-cal__add {
+  position: absolute;
+  right: 0.2rem;
+  bottom: 0.15rem;
+  margin: 0;
+  padding: 0.1rem 0.3rem;
+  border: 0;
+  border-radius: 0.25rem;
+  background: transparent;
+  color: var(--color-text-muted);
+  font: inherit;
+  font-size: 0.65rem;
+  font-weight: 600;
+  line-height: 1.2;
+  cursor: pointer;
+}
+
+.bcc-cal__add:hover,
+.bcc-cal__add:focus-visible {
+  color: inherit;
+  background: color-mix(in srgb, var(--color-accent, #3b82f6) 18%, transparent);
+  outline: none;
+}
+
+.bcc-cal__cell--empty {
+  border-color: transparent;
+  background: transparent;
+  min-height: 0;
+}
+
+.bcc-cal__day {
+  font-size: 0.75rem;
+  font-weight: 600;
+}
+
+.bcc-cal__event {
+  display: block;
+  width: 100%;
+  border: 0;
+  border-radius: 0.25rem;
+  background: color-mix(in srgb, var(--color-accent, #3b82f6) 18%, transparent);
+  color: inherit;
+  font: inherit;
+  font-size: 0.65rem;
+  line-height: 1.25;
+  text-align: left;
+  padding: 0.15rem 0.25rem;
+  cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.bcc-cal__event--selected {
+  outline: 1px solid var(--color-accent, #3b82f6);
+}
+
+.bcc-cal__more {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+}
+
+.bcc-agenda {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.45rem;
+  max-height: 22rem;
+  overflow: auto;
+}
+
+.bcc-agenda__item--selected .bcc-agenda__btn {
+  border-color: var(--color-accent, #3b82f6);
+}
+
+.bcc-agenda__btn {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  width: 100%;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bcc-agenda__btn span {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.bcc-agenda__meta {
+  font-size: 0.75rem !important;
+}
+
+.bcc-sched-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.bcc-sched-form__row {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+  gap: 0.65rem;
+}
+
+.bcc-sched-form__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  font-size: 0.85rem;
+}
+
+.bcc-sched-form__field input,
+.bcc-sched-form__field select,
+.bcc-sched-form__field textarea {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+}
+
+.bcc-sched-form__field input:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.bcc-sched-form__check {
+  display: flex;
+  align-items: center;
+  gap: 0.45rem;
+  font-size: 0.85rem;
+}
+
+.bcc-sched-form__hint {
+  margin: 0;
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.bcc-sched-form__actions,
+.bcc-sched-detail__actions,
+.bcc-workflow__actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}
+
+.bcc-sched-detail h3 {
+  margin: 0 0 0.35rem;
+}
+
+.bcc-sched-detail p {
+  margin: 0 0 0.5rem;
+  color: var(--color-text-muted);
+  font-size: 0.9rem;
+}
+
+.bcc-sched-detail__meta {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.5rem;
+  margin: 0 0 0.75rem;
+}
+
+.bcc-sched-detail__meta dt {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.bcc-sched-detail__meta dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.9rem;
+}
+
+.bcc-workflow h3 {
+  margin: 0 0 0.5rem;
+  font-size: 1rem;
+}
+
+.bcc-workflow__list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  margin: 0.75rem 0;
+  max-height: 14rem;
+  overflow: auto;
+}
+
+.bcc-workflow__pick {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 0.15rem;
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.bcc-workflow__pick span {
+  font-size: 0.8rem;
+  color: var(--color-text-muted);
+}
+
+.bcc-workflow__steps {
+  margin: 0.5rem 0 0.85rem;
+  padding-left: 1.15rem;
+}
+
+.bcc-workflow__step {
+  margin-bottom: 0.45rem;
+  font-size: 0.85rem;
+}
+
+.bcc-workflow__step--ok,
+.bcc-workflow__step--success {
+  color: var(--color-success, #22c55e);
+}
+
+.bcc-workflow__step--fail,
+.bcc-workflow__step--error {
+  color: var(--color-danger, #ef4444);
+}
+
+.bcc-workflow__step--pending,
+.bcc-workflow__step--running {
+  color: var(--color-text-muted);
+}
+
+.bcc-workflow__grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(10rem, 1fr));
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+}
+
+.bcc-workflow__grid dt {
+  margin: 0;
+  font-size: 0.7rem;
+  color: var(--color-text-muted);
+}
+
+.bcc-workflow__grid dd {
+  margin: 0.1rem 0 0;
+  font-size: 0.9rem;
+}
+
+.bcc-workflow__monitor h3 {
+  margin-top: 0.5rem;
+}
+
+.bcc-workflow__ingest {
+  margin: 0.75rem 0;
+  padding: 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  font-size: 0.85rem;
+}
+
+.bcc-workflow__ingest code {
+  word-break: break-all;
+}
+
+@media (max-width: 560px) {
+  .bcc-cal__cell {
+    min-height: 3.25rem;
+  }
+
+  .bcc-cal__event {
+    font-size: 0.55rem;
+  }
+}

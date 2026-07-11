@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Keep Truck Front and Truck Dash publishing while you browse other pages" />
+    <title>Camera Publisher · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/broadcast-control.css" />
+    <link rel="stylesheet" href="/css/broadcast-publisher.css" />
+  </head>
+  <body data-page="broadcast-publisher" class="bcc-publisher-page">
+    <main class="bcc-publisher">
+      <header class="bcc-publisher__header">
+        <h1 class="bcc-publisher__title">Camera Publisher</h1>
+        <p class="bcc-publisher__status" data-pub-status>Starting…</p>
+      </header>
+      <p class="bcc-publisher__help">
+        Leave this window open on the Surface. Browse WeatherFront, Warnings, and other pages in your main window —
+        OBS keeps receiving as long as this window stays open.
+      </p>
+      <div class="bcc-publisher__grid" data-pub-grid></div>
+      <div class="bcc-publisher__actions">
+        <button type="button" class="btn btn--primary" data-pub-restart>Restart cameras</button>
+        <button type="button" class="btn btn--secondary" data-pub-obs-refresh>Refresh OBS viewers</button>
+      </div>
+      <p class="bcc-publisher__note">
+        Pick cameras on the Broadcast page. This window only publishes them.
+      </p>
+    </main>
+    <script type="module" src="/js/broadcast/camera-publisher-window.js"></script>
+  </body>
+</html>

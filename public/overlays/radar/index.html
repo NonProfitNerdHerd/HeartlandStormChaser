@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radar + GPS Overlay · HeartlandStormChaser</title>
+    <link
+      rel="stylesheet"
+      href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+      crossorigin=""
+    />
+    <link rel="stylesheet" href="/css/overlay-radar.css" />
+  </head>
+  <body class="overlay-body">
+    <div class="radar-stage" id="radar-root" aria-live="polite">
+      <div class="radar-map" id="radar-map" role="img" aria-label="Radar map centered on platform GPS"></div>
+
+      <aside class="radar-hud" id="radar-hud">
+        <div class="radar-hud__row" data-field="city">
+          <span class="radar-hud__label">Location</span>
+          <span class="radar-hud__value" id="radar-location">—</span>
+        </div>
+        <div class="radar-hud__row" data-field="coords">
+          <span class="radar-hud__label">Coordinates</span>
+          <span class="radar-hud__value" id="radar-coords">—</span>
+        </div>
+        <div class="radar-hud__row" data-field="status">
+          <span class="radar-hud__label">GPS</span>
+          <span class="radar-hud__value" id="radar-gps-status">—</span>
+        </div>
+        <div class="radar-hud__row" data-field="updated">
+          <span class="radar-hud__label">GPS updated</span>
+          <span class="radar-hud__value" id="radar-gps-updated">—</span>
+        </div>
+        <div class="radar-hud__row" data-field="speed">
+          <span class="radar-hud__label">Speed</span>
+          <span class="radar-hud__value" id="radar-speed">—</span>
+        </div>
+        <div class="radar-hud__row" data-field="heading">
+          <span class="radar-hud__label">Heading</span>
+          <span class="radar-hud__value" id="radar-heading">—</span>
+        </div>
+        <div class="radar-hud__row radar-hud__row--radar">
+          <span class="radar-hud__label">Radar</span>
+          <span class="radar-hud__value" id="radar-status">—</span>
+        </div>
+        <div class="radar-hud__row">
+          <span class="radar-hud__label">Radar frame</span>
+          <span class="radar-hud__value" id="radar-frame">—</span>
+        </div>
+      </aside>
+
+      <div class="radar-empty" id="radar-empty" hidden>No platform GPS source selected</div>
+    </div>
+
+    <section class="radar-config" id="radar-config" hidden>
+      <h2 class="radar-config__title">Radar overlay settings</h2>
+      <form class="radar-config__form" id="radar-config-form">
+        <label class="radar-config__check">
+          <input type="checkbox" name="overlay_radar_polling_enabled" />
+          Radar polling enabled (loops last 24 frames; tiles cached 3 days)
+        </label>
+        <label class="radar-config__field">
+          <span>Frame-list refresh interval (seconds)</span>
+          <input type="number" name="overlay_radar_polling_interval_sec" min="60" max="3600" step="30" value="300" />
+        </label>
+        <label class="radar-config__field">
+          <span>Map zoom</span>
+          <input type="number" name="overlay_radar_zoom" min="3" max="16" step="1" value="8" />
+        </label>
+        <label class="radar-config__field">
+          <span>Radar opacity</span>
+          <input type="number" name="overlay_radar_opacity" min="0.1" max="1" step="0.05" value="0.65" />
+        </label>
+        <label class="radar-config__field">
+          <span>Map style</span>
+          <select name="overlay_radar_map_style">
+            <option value="dark">Dark</option>
+            <option value="streets">Streets</option>
+            <option value="satellite">Satellite</option>
+          </select>
+        </label>
+        <div class="radar-config__checks">
+          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_city" checked /> Show city / state</label>
+          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_coords" checked /> Show coordinates</label>
+          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_status" checked /> Show GPS status</label>
+          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_updated" checked /> Show last GPS update</label>
+          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_speed" checked /> Show speed</label>
+          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_heading" checked /> Show heading</label>
+        </div>
+        <p class="radar-config__meta" id="radar-config-meta">Polling status: —</p>
+        <div class="radar-config__actions">
+          <button type="submit" class="radar-config__btn">Save settings</button>
+          <span class="radar-config__message" id="radar-config-message" hidden></span>
+        </div>
+      </form>
+    </section>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script src="/js/overlay-radar.js"></script>
+  </body>
+</html>

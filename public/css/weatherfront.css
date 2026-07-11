@@ -1,0 +1,164 @@
+/* WeatherFront embedded radar page */
+
+.weatherfront-body {
+  overflow: hidden;
+}
+
+.weatherfront-main {
+  display: flex;
+  flex-direction: column;
+  height: calc(100vh - var(--site-header-height));
+  max-width: none;
+  padding: 0;
+}
+
+.weatherfront-embed {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  background: #000;
+  overflow: visible;
+}
+
+.weatherfront-controls {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 10;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 0.5rem;
+  width: auto;
+  min-width: 7.5rem;
+  max-width: 11.5rem;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.weatherfront-controls > * {
+  pointer-events: auto;
+}
+
+.weatherfront-control-btn {
+  width: 100%;
+  padding: 0.72rem 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  border-radius: var(--radius-md);
+  background: rgb(15 23 42 / 0.82);
+  color: #fff;
+  font-size: 1.3rem;
+  font-weight: 600;
+  line-height: 1.1;
+  text-align: center;
+  cursor: pointer;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+}
+
+.weatherfront-control-btn:hover {
+  background: rgb(30 41 59 / 0.92);
+}
+
+.weatherfront-control-btn:active {
+  transform: translateY(1px);
+}
+
+.weatherfront-zoom-btn--active {
+  border-color: rgb(56 189 248 / 0.55);
+  background: rgb(30 58 95 / 0.92);
+  color: #7dd3fc;
+}
+
+.weatherfront-zoom-bar {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  width: 100%;
+}
+
+.weatherfront-gps-overlay {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 0.3rem;
+  width: 100%;
+  padding: 0.55rem 0.5rem;
+  border: 1px solid rgb(255 255 255 / 0.15);
+  border-radius: var(--radius-md);
+  background: rgb(15 23 42 / 0.82);
+  color: #fcd34d;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 10px rgb(0 0 0 / 0.45);
+  pointer-events: none;
+}
+
+.weatherfront-gps-overlay--ok {
+  color: #86efac;
+}
+
+.weatherfront-gps-overlay--hidden {
+  visibility: hidden;
+}
+
+.weatherfront-gps-overlay__line {
+  width: 100%;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: 0.01em;
+  text-align: right;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weatherfront-embed__viewport {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: #000;
+}
+
+.weatherfront-embed__scaled {
+  width: 100%;
+  height: 100%;
+  transform-origin: top left;
+}
+
+.weatherfront-embed__iframe {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border: 0;
+  opacity: 1;
+  transition: opacity 0.2s ease;
+}
+
+.weatherfront-embed__iframe--loading {
+  opacity: 0;
+}
+
+.weatherfront-embed__state {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 1.5rem;
+  text-align: center;
+  color: var(--color-text-muted);
+  font-size: 0.95rem;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.weatherfront-embed__state--error {
+  color: #fca5a5;
+}
+
+.weatherfront-embed__state--hidden {
+  display: none;
+}

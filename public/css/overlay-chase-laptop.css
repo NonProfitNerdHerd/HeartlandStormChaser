@@ -1,0 +1,123 @@
+/* OBS ChaseLaptop full-width overlay — tablet / dash readable */
+
+:root {
+  --chase-laptop-font: "Segoe UI", system-ui, -apple-system, sans-serif;
+  --chase-laptop-green: #39ff14;
+  --chase-laptop-green-dim: #4ade80;
+  --chase-laptop-text: #ffffff;
+  --chase-laptop-bar-bg: rgb(20 22 26 / 0.95);
+  --chase-laptop-shadow: 0 2px 6px rgb(0 0 0 / 0.9);
+}
+
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  background: transparent;
+}
+
+body.overlay-body--preview {
+  background: #111827;
+}
+
+.overlay-body {
+  min-height: 100vh;
+  font-family: var(--chase-laptop-font);
+  color: var(--chase-laptop-text);
+}
+
+.chase-laptop {
+  width: 100%;
+  min-height: 100vh;
+  display: flex;
+  align-items: flex-start;
+}
+
+.chase-laptop__bar {
+  display: grid;
+  grid-template-columns: 1.35fr 0.65fr 1.2fr 1.1fr 1fr;
+  gap: 1rem 1.25rem;
+  width: 100%;
+  padding: 1.1rem 1.5rem;
+  box-sizing: border-box;
+  background: var(--chase-laptop-bar-bg);
+  border-bottom: 4px solid var(--chase-laptop-green);
+}
+
+.chase-laptop__col {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 0.35rem;
+  min-width: 0;
+}
+
+.chase-laptop__col--center {
+  align-items: center;
+  text-align: center;
+}
+
+.chase-laptop__col--weather {
+  gap: 0.3rem;
+}
+
+.chase-laptop__value {
+  line-height: 1.12;
+  text-shadow: var(--chase-laptop-shadow);
+}
+
+.chase-laptop__value--large {
+  font-size: 2.5rem;
+  font-weight: 800;
+  color: var(--chase-laptop-text);
+  letter-spacing: -0.02em;
+}
+
+.chase-laptop__value--medium {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--chase-laptop-green-dim);
+}
+
+#current-location,
+#target-location {
+  white-space: normal;
+  overflow: visible;
+  word-break: break-word;
+}
+
+.chase-laptop__empty {
+  width: 100%;
+  padding: 1.5rem;
+  text-align: center;
+  font-size: clamp(1.5rem, 3vw, 2.25rem);
+  font-weight: 700;
+  color: var(--chase-laptop-green-dim);
+  text-shadow: var(--chase-laptop-shadow);
+}
+
+.chase-laptop__empty--hidden {
+  display: none;
+}
+
+.chase-laptop--empty .chase-laptop__bar {
+  display: none;
+}
+
+.chase-laptop--empty .chase-laptop__empty {
+  display: block;
+}
+
+@media (max-width: 900px) {
+  .chase-laptop__bar {
+    grid-template-columns: 1fr 1fr;
+    gap: 1rem;
+    padding: 1rem;
+  }
+
+  .chase-laptop__col--center {
+    align-items: flex-start;
+    text-align: left;
+  }
+}

@@ -1,10 +1,19 @@
 import { routeErrorResponse } from "../lib/db-errors";
 import { getActiveChaseForDevice, recordChasePoint } from "../lib/chase-points";
 import { extractBearerToken, findDeviceByToken } from "../lib/gps-auth";
+import { getPlatformSource } from "../lib/gps-platform";
 import type { Env } from "../index";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
-const EXPENSE_CATEGORIES = ["Gas", "Food", "Hotel", "Other"] as const;
+const EXPENSE_CATEGORIES = [
+  "Gas",
+  "Food",
+  "Hotel",
+  "Other",
+  "Equipment",
+  "Souveniers",
+  "Software Expense",
+] as const;
 type ExpenseCategory = (typeof EXPENSE_CATEGORIES)[number];
 
 function json(data: unknown, status = 200): Response {
@@ -61,6 +70,13 @@ interface ExpenseRow {
   updated_at: string;
 }
 
+interface ChaseNoteRow {
+  id: string;
+  chase_id: string;
+  body: string;
+  created_at: string;
+}
+
 function mapChaseSummary(row: ChaseRow, expenseTotal: number) {
   return {
     id: row.id,
@@ -100,12 +116,9 @@ async function getExpenseBreakdown(env: Env, chaseId: string) {
     .bind(chaseId)
     .all<{ category: string; total: number }>();
 
-  const breakdown: Record<string, number> = {
-    Gas: 0,
-    Food: 0,
-    Hotel: 0,
-    Other: 0,
-  };
+  const breakdown: Record<string, number> = Object.fromEntries(
+    EXPENSE_CATEGORIES.map((category) => [category, 0]),
+  );
 
   for (const row of result.results ?? []) {
     breakdown[row.category] = row.total;
@@ -133,6 +146,31 @@ async function resolveDevice(request: Request, env: Env): Promise<DeviceAuth> {
   }
 
   return { ok: true, device };
+}
+
+type ChaseDeviceAuth =
+  | { ok: true; deviceId: string }
+  | { ok: false; response: Response };
+
+async function resolveChaseDevice(request: Request, env: Env): Promise<ChaseDeviceAuth> {
+  const token = extractBearerToken(request);
+  if (token) {
+    const auth = await resolveDevice(request, env);
+    if (!auth.ok) {
+      return auth;
+    }
+    return { ok: true, deviceId: auth.device.id };
+  }
+
+  const platform = await getPlatformSource(env);
+  if (!platform?.device_id) {
+    return {
+      ok: false,
+      response: errorResponse("Select a platform GPS device before starting a chase", 400),
+    };
+  }
+
+  return { ok: true, deviceId: platform.device_id };
 }
 
 async function handleListChases(env: Env): Promise<Response> {
@@ -193,6 +231,15 @@ async function handleGetChase(env: Env, chaseId: string): Promise<Response> {
     .bind(chaseId)
     .all<ExpenseRow>();
 
+  const notes = await env.DB.prepare(
+    `SELECT id, chase_id, body, created_at
+     FROM chase_notes
+     WHERE chase_id = ?
+     ORDER BY created_at DESC`,
+  )
+    .bind(chaseId)
+    .all<ChaseNoteRow>();
+
   const total = await getExpenseTotal(env, chaseId);
   const breakdown = await getExpenseBreakdown(env, chaseId);
 
@@ -201,12 +248,13 @@ async function handleGetChase(env: Env, chaseId: string): Promise<Response> {
     chase: mapChaseSummary(chase, total),
     points: points.results ?? [],
     expenses: expenses.results ?? [],
+    notes: notes.results ?? [],
     expense_breakdown: breakdown,
   });
 }
 
 async function handleCreateChase(request: Request, env: Env): Promise<Response> {
-  const auth = await resolveDevice(request, env);
+  const auth = await resolveChaseDevice(request, env);
   if (!auth.ok) {
     return auth.response;
   }
@@ -223,7 +271,7 @@ async function handleCreateChase(request: Request, env: Env): Promise<Response> 
     return errorResponse("chase_name is required");
   }
 
-  const existing = await getActiveChaseForDevice(env, auth.device.id);
+  const existing = await getActiveChaseForDevice(env, auth.deviceId);
   if (existing) {
     return errorResponse("An active or paused chase already exists for this device", 409);
   }
@@ -238,7 +286,7 @@ async function handleCreateChase(request: Request, env: Env): Promise<Response> 
   )
     .bind(
       chaseId,
-      auth.device.id,
+      auth.deviceId,
       chaseName,
       timestamp,
       body.notes?.trim() ?? "",
@@ -482,7 +530,9 @@ async function handleAddExpense(
 
   const category = parseExpenseCategory(body.category);
   if (!category) {
-    return errorResponse("category must be Gas, Food, Hotel, or Other");
+    return errorResponse(
+      "category must be one of: Gas, Food, Hotel, Other, Equipment, Souveniers, Software Expense",
+    );
   }
 
   if (typeof body.amount !== "number" || body.amount < 0) {
@@ -550,7 +600,9 @@ async function handleUpdateExpense(
   if (body.category != null) {
     const category = parseExpenseCategory(body.category);
     if (!category) {
-      return errorResponse("category must be Gas, Food, Hotel, or Other");
+      return errorResponse(
+        "category must be one of: Gas, Food, Hotel, Other, Equipment, Souveniers, Software Expense",
+      );
     }
     updates.push("category = ?");
     bindings.push(category);
@@ -614,6 +666,47 @@ async function handleDeleteExpense(
   return json({ ok: true });
 }
 
+async function handleAddChaseNote(
+  request: Request,
+  env: Env,
+  chaseId: string,
+): Promise<Response> {
+  const chase = await getChaseOr404(env, chaseId);
+  if (!chase) {
+    return errorResponse("Chase not found", 404);
+  }
+
+  let body: { body?: string };
+  try {
+    body = await request.json();
+  } catch {
+    return errorResponse("Invalid JSON body");
+  }
+
+  const noteBody = body.body?.trim();
+  if (!noteBody) {
+    return errorResponse("body is required");
+  }
+
+  const timestamp = nowUtc();
+  const noteId = crypto.randomUUID();
+
+  await env.DB.prepare(
+    `INSERT INTO chase_notes (id, chase_id, body, created_at)
+     VALUES (?, ?, ?, ?)`,
+  )
+    .bind(noteId, chaseId, noteBody, timestamp)
+    .run();
+
+  const note = await env.DB.prepare(
+    `SELECT id, chase_id, body, created_at FROM chase_notes WHERE id = ?`,
+  )
+    .bind(noteId)
+    .first<ChaseNoteRow>();
+
+  return json({ ok: true, note }, 201);
+}
+
 export async function handleChases(request: Request, env: Env): Promise<Response> {
   const url = new URL(request.url);
   const { pathname } = url;
@@ -663,6 +756,10 @@ export async function handleChases(request: Request, env: Env): Promise<Response
 
     if (pathname === `/api/chases/${chaseId}/expenses` && method === "POST") {
       return handleAddExpense(request, env, chaseId);
+    }
+
+    if (pathname === `/api/chases/${chaseId}/notes` && method === "POST") {
+      return handleAddChaseNote(request, env, chaseId);
     }
 
     const expenseId = parseExpenseId(pathname);

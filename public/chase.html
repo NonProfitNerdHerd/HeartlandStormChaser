@@ -15,14 +15,14 @@
       <div class="site-header__inner">
         <a class="site-logo" href="/">HeartlandStormChaser</a>
         <nav class="site-nav" aria-label="Main navigation">
-          <a class="nav-link" href="/" data-nav="home">Home</a>
-          <a class="nav-link" href="/dashboard.html" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
           <a class="nav-link" href="/gps.html" data-nav="gps">GPS</a>
           <a class="nav-link" href="/warnings.html" data-nav="warnings">Warnings</a>
           <a class="nav-link" href="/overlays.html" data-nav="overlays">Overlays</a>
+          <a class="nav-link" href="/weatherfront/" data-nav="weatherfront">WeatherFront</a>
           <a class="nav-link" href="/chases.html" data-nav="chases">Chases</a>
-          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams">Chasers Streams</a>
-          <a class="nav-link" href="/settings.html" data-nav="settings">Settings</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams">Streams</a>
+          <a class="nav-link" href="/broadcast/control/" data-nav="broadcast">Broadcast</a>
         </nav>
       </div>
     </header>
@@ -46,7 +46,7 @@
           <dl class="chase-summary-list" id="chase-summary"></dl>
           <label class="chase-notes-label" for="chase-notes">Notes</label>
           <textarea class="chase-notes-input" id="chase-notes" rows="4" placeholder="Trip notes…"></textarea>
-          <button type="button" class="btn btn--primary" id="save-notes-btn">Save notes</button>
+          <button type="button" class="btn btn--primary" id="save-notes-btn">Add note</button>
           <p class="chase-message" id="notes-message" hidden></p>
         </section>
 
@@ -54,12 +54,52 @@
           <h2 class="chases-panel__title" id="expense-summary-heading">Expenses</h2>
           <div class="expense-breakdown" id="expense-breakdown"></div>
           <p class="chase-total-expenses" id="expense-total"></p>
+          <form class="chase-expense-add" id="add-expense-form">
+            <h3 class="chase-expense-add__title">Add expense</h3>
+            <div class="chase-expense-add__row">
+              <label class="chase-expense-add__field">
+                Category
+                <select id="add-expense-category" required>
+                  <option value="Gas">Gas</option>
+                  <option value="Food">Food</option>
+                  <option value="Hotel">Hotel</option>
+                  <option value="Equipment">Equipment</option>
+                  <option value="Souveniers">Souveniers</option>
+                  <option value="Software Expense">Software Expense</option>
+                  <option value="Other">Other</option>
+                </select>
+              </label>
+              <label class="chase-expense-add__field">
+                Amount ($)
+                <input type="number" id="add-expense-amount" min="0" step="0.01" required />
+              </label>
+            </div>
+            <label class="chase-expense-add__field chase-expense-add__field--full">
+              Description
+              <input type="text" id="add-expense-description" placeholder="Optional details" />
+            </label>
+            <p class="chase-message chase-expense-add__message" id="add-expense-message" hidden></p>
+            <div class="chase-expense-add__actions">
+              <button type="submit" class="btn btn--primary chase-expense-add__submit">Add expense</button>
+            </div>
+          </form>
         </section>
       </div>
 
       <section class="chases-panel" aria-labelledby="chase-map-heading">
         <h2 class="chases-panel__title" id="chase-map-heading">GPS route</h2>
-        <div class="chase-map" id="chase-map"></div>
+        <div class="chase-map-wrap">
+          <a
+            class="chase-map-google-btn"
+            id="chase-map-google-btn"
+            href="#"
+            target="_blank"
+            rel="noopener noreferrer"
+            hidden
+            >Open in Google Maps</a
+          >
+          <div class="chase-map" id="chase-map"></div>
+        </div>
       </section>
 
       <section class="chases-panel" aria-labelledby="expense-table-heading">
@@ -80,6 +120,21 @@
             </tbody>
           </table>
         </div>
+
+        <div class="chase-notes-section" id="chase-notes-section" hidden>
+          <h3 class="chase-notes-list__title" id="notes-heading">Notes</h3>
+          <div class="chases-table-wrap">
+            <table class="chases-table" aria-labelledby="notes-heading">
+              <thead>
+                <tr>
+                  <th>Time</th>
+                  <th>Note</th>
+                </tr>
+              </thead>
+              <tbody id="chase-notes-body"></tbody>
+            </table>
+          </div>
+        </div>
       </section>
     </main>
 
@@ -92,6 +147,9 @@
             <option value="Gas">Gas</option>
             <option value="Food">Food</option>
             <option value="Hotel">Hotel</option>
+            <option value="Equipment">Equipment</option>
+            <option value="Souveniers">Souveniers</option>
+            <option value="Software Expense">Software Expense</option>
             <option value="Other">Other</option>
           </select>
         </label>
@@ -101,11 +159,7 @@
         </label>
         <label>
           Description
-          <input type="text" id="expense-description" />
-        </label>
-        <label>
-          Time
-          <input type="datetime-local" id="expense-time" required />
+          <input type="text" id="expense-description" placeholder="Optional details" />
         </label>
         <div class="chase-dialog__actions">
           <button type="button" class="btn btn--secondary" id="expense-cancel-btn">Cancel</button>
@@ -114,8 +168,44 @@
       </form>
     </dialog>
 
+    <dialog class="chase-dialog" id="delete-chase-dialog">
+      <form class="chase-dialog__form" id="delete-chase-form">
+        <h3 class="chase-dialog__title">Delete chase</h3>
+        <p class="chase-dialog__warning">
+          This permanently deletes the chase and all of its GPS points, expenses, and notes. Type
+          <strong>delete</strong> to confirm.
+        </p>
+        <label>
+          Confirmation
+          <input
+            type="text"
+            id="delete-chase-confirm-input"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="delete"
+          />
+        </label>
+        <p class="chase-message" id="delete-chase-message" hidden></p>
+        <div class="chase-dialog__actions">
+          <button type="button" class="btn btn--secondary" id="delete-chase-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn--danger" id="delete-chase-confirm-btn" disabled>OK</button>
+        </div>
+      </form>
+    </dialog>
+
+    <footer class="site-footer">
+      <p class="site-footer__tagline">HeartlandStormChaser · Chase</p>
+      <div class="site-footer__auth" id="site-footer-auth">
+        <span class="site-footer__auth-user" id="site-footer-auth-user" hidden></span>
+        <a class="site-footer__auth-link" id="site-footer-sign-in" href="/login.html">Sign in</a>
+        <button type="button" class="btn btn--secondary btn--small site-footer__auth-btn" id="site-footer-sign-out" hidden>Sign out</button>
+      </div>
+    </footer>
+
+    <script src="/js/auth-footer.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="/js/nav.js"></script>
+    <script type="module" src="/js/broadcast/camera-dock-persist.js"></script>
     <script src="/js/chase-detail.js"></script>
   </body>
 </html>

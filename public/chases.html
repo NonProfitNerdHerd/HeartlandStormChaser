@@ -14,14 +14,14 @@
       <div class="site-header__inner">
         <a class="site-logo" href="/">HeartlandStormChaser</a>
         <nav class="site-nav" aria-label="Main navigation">
-          <a class="nav-link" href="/" data-nav="home">Home</a>
-          <a class="nav-link" href="/dashboard.html" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
           <a class="nav-link" href="/gps.html" data-nav="gps">GPS</a>
           <a class="nav-link" href="/warnings.html" data-nav="warnings">Warnings</a>
           <a class="nav-link" href="/overlays.html" data-nav="overlays">Overlays</a>
+          <a class="nav-link" href="/weatherfront/" data-nav="weatherfront">WeatherFront</a>
           <a class="nav-link" href="/chases.html" data-nav="chases">Chases</a>
-          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams">Chasers Streams</a>
-          <a class="nav-link" href="/settings.html" data-nav="settings">Settings</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams">Streams</a>
+          <a class="nav-link" href="/broadcast/control/" data-nav="broadcast">Broadcast</a>
         </nav>
       </div>
     </header>
@@ -32,7 +32,10 @@
           <h1 class="chases-title">Chase trips</h1>
           <p class="chases-subtitle" id="chases-status">Loading chases…</p>
         </div>
-        <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh</button>
+        <div class="chases-toolbar__actions">
+          <button type="button" class="btn btn--primary" id="new-chase-btn">New</button>
+          <button type="button" class="btn btn--secondary" id="refresh-btn">Refresh</button>
+        </div>
       </div>
 
       <section class="chases-panel" aria-labelledby="chases-list-heading">
@@ -63,7 +66,37 @@
       </section>
     </main>
 
+    <dialog class="chase-dialog" id="new-chase-dialog">
+      <form method="dialog" class="chase-dialog__form" id="new-chase-form">
+        <h3 class="chase-dialog__title">New chase</h3>
+        <label>
+          Chase name
+          <input type="text" id="new-chase-name" required placeholder="May 6 Oklahoma chase" />
+        </label>
+        <label>
+          Notes
+          <textarea id="new-chase-notes" rows="3" placeholder="Optional trip notes…"></textarea>
+        </label>
+        <p class="chase-message" id="new-chase-message" hidden></p>
+        <div class="chase-dialog__actions">
+          <button type="button" class="btn btn--secondary" id="new-chase-cancel-btn">Cancel</button>
+          <button type="submit" class="btn btn--primary">Create</button>
+        </div>
+      </form>
+    </dialog>
+
+    <footer class="site-footer">
+      <p class="site-footer__tagline">HeartlandStormChaser · Chases</p>
+      <div class="site-footer__auth" id="site-footer-auth">
+        <span class="site-footer__auth-user" id="site-footer-auth-user" hidden></span>
+        <a class="site-footer__auth-link" id="site-footer-sign-in" href="/login.html">Sign in</a>
+        <button type="button" class="btn btn--secondary btn--small site-footer__auth-btn" id="site-footer-sign-out" hidden>Sign out</button>
+      </div>
+    </footer>
+
+    <script src="/js/auth-footer.js"></script>
     <script src="/js/nav.js"></script>
+    <script type="module" src="/js/broadcast/camera-dock-persist.js"></script>
     <script src="/js/chases.js"></script>
   </body>
 </html>

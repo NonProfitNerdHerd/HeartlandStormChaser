@@ -163,6 +163,33 @@
     return String(text).replace(/"/g, "&quot;");
   }
 
+  /** YouTube autoplay requires mute; keep playback continuous across focus toggles. */
+  function buildEmbedSrc(embedUrl) {
+    var base = String(embedUrl || "").trim();
+    if (!base) return "";
+    var joiner = base.indexOf("?") >= 0 ? "&" : "?";
+    return base + joiner + "autoplay=1&mute=1&playsinline=1&rel=0";
+  }
+
+  function applyFocusClasses() {
+    var slots = quadGrid.querySelectorAll(".quad-slot");
+    slots.forEach(function (el) {
+      var slotNumber = Number(el.getAttribute("data-slot"));
+      var isFocused = state.focusedSlot === slotNumber;
+      el.classList.toggle("quad-slot--focused", isFocused);
+      var btn = el.querySelector('[data-action="focus"]');
+      if (btn) {
+        btn.textContent = isFocused ? "Exit" : "Fullscreen";
+        btn.setAttribute("title", isFocused ? "Exit fullscreen" : "Fullscreen");
+      }
+    });
+  }
+
+  function setFocusedSlot(slotNumber) {
+    state.focusedSlot = state.focusedSlot === slotNumber ? null : slotNumber;
+    applyFocusClasses();
+  }
+
   function liveBadge(source) {
     if (!source.enabled) {
       return '<span class="badge badge--muted">Disabled</span>';
@@ -229,10 +256,10 @@
           body =
             '<div class="quad-slot__video">' +
             '<iframe src="' +
-            escapeAttr(source.embed_url) +
-            '?autoplay=0&rel=0" title="' +
+            escapeAttr(buildEmbedSrc(source.embed_url)) +
+            '" title="' +
             escapeAttr(source.display_name) +
-            '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="lazy"></iframe>' +
+            '" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" allowfullscreen loading="eager"></iframe>' +
             "</div>";
         } else if (source) {
           var offlineMsg = source.enabled
@@ -259,7 +286,11 @@
           '">' +
           assignOptions(source ? source.id : null) +
           "</select>" +
-          '<button type="button" class="btn btn--secondary btn--small quad-slot__fullscreen" data-action="focus" title="Fullscreen">Fullscreen</button>' +
+          '<button type="button" class="btn btn--secondary btn--small quad-slot__fullscreen" data-action="focus" title="' +
+          (focused ? "Exit fullscreen" : "Fullscreen") +
+          '">' +
+          (focused ? "Exit" : "Fullscreen") +
+          "</button>" +
           "</div>" +
           body +
           "</article>"
@@ -442,8 +473,7 @@
     var slotNumber = Number(slotEl.getAttribute("data-slot"));
 
     if (action === "focus") {
-      state.focusedSlot = state.focusedSlot === slotNumber ? null : slotNumber;
-      renderQuad();
+      setFocusedSlot(slotNumber);
     }
   });
 
@@ -464,7 +494,7 @@
   document.addEventListener("keydown", function (event) {
     if (event.key === "Escape" && state.focusedSlot !== null) {
       state.focusedSlot = null;
-      renderQuad();
+      applyFocusClasses();
     }
   });
 

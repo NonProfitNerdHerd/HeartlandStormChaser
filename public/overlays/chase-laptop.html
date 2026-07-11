@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ChaseLaptop Overlay</title>
+    <link rel="stylesheet" href="/css/overlay-chase-laptop.css" />
+  </head>
+  <body class="overlay-body">
+    <div class="chase-laptop" id="chase-laptop-root" aria-live="polite">
+      <div class="chase-laptop__bar" id="chase-laptop-bar">
+        <div class="chase-laptop__col">
+          <div class="chase-laptop__value chase-laptop__value--large" id="current-location">—</div>
+          <div class="chase-laptop__value chase-laptop__value--medium" id="current-datetime">—</div>
+        </div>
+
+        <div class="chase-laptop__col chase-laptop__col--center">
+          <div class="chase-laptop__value chase-laptop__value--large" id="direction-value">--</div>
+        </div>
+
+        <div class="chase-laptop__col">
+          <div class="chase-laptop__value chase-laptop__value--large" id="target-location">—</div>
+          <div class="chase-laptop__value chase-laptop__value--medium" id="eta-value">ETA --</div>
+        </div>
+
+        <div class="chase-laptop__col chase-laptop__col--weather">
+          <div class="chase-laptop__value chase-laptop__value--large" id="temp-feels-value">—</div>
+          <div class="chase-laptop__value chase-laptop__value--medium" id="ceiling-value">—</div>
+          <div class="chase-laptop__value chase-laptop__value--medium" id="pressure-trend-value">—</div>
+        </div>
+
+        <div class="chase-laptop__col">
+          <div class="chase-laptop__value chase-laptop__value--large" id="wind-gusts-value">—</div>
+          <div class="chase-laptop__value chase-laptop__value--medium" id="dew-humidity-value">—</div>
+        </div>
+      </div>
+
+      <div class="chase-laptop__empty chase-laptop__empty--hidden" id="empty-state">
+        No Platform GPS Source Selected
+      </div>
+    </div>
+
+    <script src="/js/overlay-chase-laptop.js"></script>
+  </body>
+</html>

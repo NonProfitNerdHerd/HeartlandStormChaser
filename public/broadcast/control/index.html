@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="Broadcast Control Center — OBS scene, stream, and telemetry control for HeartlandStormChaser"
+    />
+    <title>Broadcast Control Center · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/broadcast-control.css" />
+    <link rel="stylesheet" href="/css/broadcast-schedule.css" />
+  </head>
+  <body data-page="broadcast">
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-logo" href="/">HeartlandStormChaser</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/gps.html" data-nav="gps">GPS</a>
+          <a class="nav-link" href="/warnings.html" data-nav="warnings">Warnings</a>
+          <a class="nav-link" href="/overlays.html" data-nav="overlays">Overlays</a>
+          <a class="nav-link" href="/weatherfront/" data-nav="weatherfront">WeatherFront</a>
+          <a class="nav-link" href="/chases.html" data-nav="chases">Chases</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams">Streams</a>
+          <a class="nav-link" href="/broadcast/control/" data-nav="broadcast">Broadcast</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="site-main site-main--wide" id="broadcast-control-root">
+      <header class="bcc-header">
+        <div class="bcc-header__top">
+          <h1 class="bcc-header__title">Broadcast Control Center</h1>
+          <div class="bcc-header__badges" aria-label="Connection status">
+            <div data-bcc-badge-listener></div>
+            <div data-bcc-badge-obs></div>
+            <div data-bcc-badge-stream></div>
+            <div data-bcc-badge-recording></div>
+            <div data-bcc-badge-gps></div>
+          </div>
+        </div>
+        <div class="bcc-header__meta">
+          <p class="bcc-header__clock" data-bcc-clock>—</p>
+          <p class="bcc-header__updated" data-bcc-updated>Loading…</p>
+        </div>
+        <p class="bcc-header__error" data-bcc-header-error hidden></p>
+      </header>
+
+      <section class="bcc-section bcc-section--scenes bcc-section--flush" aria-label="Scenes">
+        <div data-bcc-scenes></div>
+      </section>
+
+      <section class="bcc-section bcc-section--dock bcc-section--flush" aria-label="Camera dock">
+        <div data-bcc-camera-dock></div>
+      </section>
+
+      <section class="bcc-section bcc-section--controls" aria-labelledby="controls-heading">
+        <h2 id="controls-heading">Stream controls</h2>
+        <div data-bcc-controls></div>
+      </section>
+
+      <section class="bcc-section bcc-section--tabs" aria-label="Broadcast details">
+        <div class="bcc-tabs" role="tablist" aria-label="Broadcast details">
+          <button type="button" class="bcc-tabs__btn bcc-tabs__btn--active" role="tab" id="tab-telemetry" aria-controls="panel-telemetry" aria-selected="true" data-bcc-tab="telemetry">
+            Telemetry
+          </button>
+          <button type="button" class="bcc-tabs__btn" role="tab" id="tab-health" aria-controls="panel-health" aria-selected="false" data-bcc-tab="health" tabindex="-1">
+            System health
+          </button>
+          <button type="button" class="bcc-tabs__btn" role="tab" id="tab-stats" aria-controls="panel-stats" aria-selected="false" data-bcc-tab="stats" tabindex="-1">
+            OBS statistics
+          </button>
+          <button type="button" class="bcc-tabs__btn" role="tab" id="tab-sources" aria-controls="panel-sources" aria-selected="false" data-bcc-tab="sources" tabindex="-1">
+            Camera and source monitor
+          </button>
+          <button type="button" class="bcc-tabs__btn" role="tab" id="tab-events" aria-controls="panel-events" aria-selected="false" data-bcc-tab="events" tabindex="-1">
+            Event log
+          </button>
+          <button type="button" class="bcc-tabs__btn" role="tab" id="tab-vdo" aria-controls="panel-vdo" aria-selected="false" data-bcc-tab="vdo" tabindex="-1">
+            VDO.Ninja
+          </button>
+          <button type="button" class="bcc-tabs__btn" role="tab" id="tab-settings" aria-controls="panel-settings" aria-selected="false" data-bcc-tab="settings" tabindex="-1">
+            Settings
+          </button>
+        </div>
+        <div class="bcc-tabs__panels">
+          <div class="bcc-tabs__panel" role="tabpanel" id="panel-telemetry" aria-labelledby="tab-telemetry" data-bcc-tab-panel="telemetry">
+            <div data-bcc-telemetry></div>
+          </div>
+          <div class="bcc-tabs__panel" role="tabpanel" id="panel-health" aria-labelledby="tab-health" data-bcc-tab-panel="health" hidden>
+            <div class="bcc-health-grid" data-bcc-health></div>
+          </div>
+          <div class="bcc-tabs__panel" role="tabpanel" id="panel-stats" aria-labelledby="tab-stats" data-bcc-tab-panel="stats" hidden>
+            <div data-bcc-stats></div>
+          </div>
+          <div class="bcc-tabs__panel" role="tabpanel" id="panel-sources" aria-labelledby="tab-sources" data-bcc-tab-panel="sources" hidden>
+            <div class="bcc-source-grid" data-bcc-sources></div>
+          </div>
+          <div class="bcc-tabs__panel" role="tabpanel" id="panel-events" aria-labelledby="tab-events" data-bcc-tab-panel="events" hidden>
+            <div data-bcc-events></div>
+          </div>
+          <div class="bcc-tabs__panel" role="tabpanel" id="panel-vdo" aria-labelledby="tab-vdo" data-bcc-tab-panel="vdo" hidden>
+            <p class="bcc-section__desc">Scan a push QR on the road, or select the primary send link.</p>
+            <div data-bcc-vdo-links></div>
+          </div>
+          <div class="bcc-tabs__panel" role="tabpanel" id="panel-settings" aria-labelledby="tab-settings" data-bcc-tab-panel="settings" hidden>
+            <div data-bcc-settings></div>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <dialog id="bcc-schedule-dialog" class="bcc-sched-dialog" aria-label="Broadcast Schedule"></dialog>
+    <dialog id="bcc-start-workflow-dialog" class="bcc-workflow-dialog" aria-label="Start Streaming workflow"></dialog>
+
+    <footer class="site-footer">
+      <p class="site-footer__tagline">HeartlandStormChaser · Broadcast Control Center</p>
+      <div class="site-footer__auth" id="site-footer-auth">
+        <span class="site-footer__auth-user" id="site-footer-auth-user" hidden></span>
+        <a class="site-footer__auth-link" id="site-footer-sign-in" href="/login.html">Sign in</a>
+        <button
+          type="button"
+          class="btn btn--secondary btn--small site-footer__auth-btn"
+          id="site-footer-sign-out"
+          hidden
+        >
+          Sign out
+        </button>
+      </div>
+    </footer>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+    <script src="/js/auth-footer.js"></script>
+    <script src="/js/nav.js"></script>
+    <script type="module" src="/js/broadcast/main.js"></script>
+  </body>
+</html>

@@ -11,6 +11,11 @@ import {
 } from "../lib/overlay-warnings-bar";
 import { getOverlayWarningLevel } from "../lib/overlay-warnings";
 import {
+  buildRadarOverlayData,
+  proxyRadarWms,
+  updateRadarOverlaySettings,
+} from "../lib/overlay-radar";
+import {
   filterAlertsByEventFilters,
   getAlertsWithinRadius,
   getWarningsSettings,
@@ -464,7 +469,11 @@ async function handleWarningsOverlayData(env: Env): Promise<Response> {
   }
 }
 
-export async function handleOverlays(request: Request, env: Env): Promise<Response> {
+export async function handleOverlays(
+  request: Request,
+  env: Env,
+  ctx?: ExecutionContext,
+): Promise<Response> {
   try {
     const url = new URL(request.url);
     const { pathname } = url;
@@ -484,6 +493,28 @@ export async function handleOverlays(request: Request, env: Env): Promise<Respon
 
     if (pathname === "/api/overlays/warnings-data" && method === "GET") {
       return handleWarningsOverlayData(env);
+    }
+
+    if (pathname === "/api/overlays/radar-data" && method === "GET") {
+      return json(await buildRadarOverlayData(env));
+    }
+
+    if (pathname === "/api/overlays/radar-settings" && method === "PUT") {
+      let body: Record<string, unknown>;
+      try {
+        body = await request.json();
+      } catch {
+        return errorResponse("Invalid JSON body");
+      }
+      const settings = await updateRadarOverlaySettings(env, body);
+      return json({ ok: true, settings });
+    }
+
+    if (pathname === "/api/overlays/radar-wms" && method === "GET") {
+      if (!ctx) {
+        return errorResponse("Radar WMS proxy unavailable", 500);
+      }
+      return proxyRadarWms(request, env, ctx);
     }
 
     return errorResponse("Not found", 404);

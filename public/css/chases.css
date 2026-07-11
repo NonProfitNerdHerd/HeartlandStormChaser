@@ -181,6 +181,138 @@
   font-weight: 600;
 }
 
+.chase-map-wrap {
+  position: relative;
+}
+
+.chase-map-google-btn {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  z-index: 500;
+  padding: 0.45rem 0.75rem;
+  border: 1px solid rgb(255 255 255 / 0.2);
+  border-radius: var(--radius-md);
+  background: rgb(15 23 42 / 0.88);
+  color: #fff;
+  font-size: 0.8125rem;
+  font-weight: 600;
+  text-decoration: none;
+  backdrop-filter: blur(6px);
+  box-shadow: 0 2px 8px rgb(0 0 0 / 0.45);
+}
+
+.chase-map-google-btn:hover {
+  background: rgb(30 41 59 / 0.95);
+  color: #fff;
+  text-decoration: none;
+}
+
+.chase-notes-section {
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.chase-expense-add {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  padding-top: 1.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+.chase-expense-add__row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.75rem;
+}
+
+.chase-expense-add__field--full {
+  width: 100%;
+}
+
+.chase-expense-add__message {
+  margin: 0;
+}
+
+.chase-expense-add__actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.chase-expense-add__submit {
+  width: 30%;
+  min-width: 8rem;
+}
+
+.chase-expense-add__title {
+  margin: 0;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.chase-expense-add__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.35rem;
+  font-size: 0.875rem;
+  font-weight: 600;
+}
+
+.chase-expense-add__field input,
+.chase-expense-add__field select {
+  padding: 0.55rem 0.65rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+  color: inherit;
+  font: inherit;
+  font-weight: 400;
+}
+
+.chase-notes-list__title {
+  margin: 0 0 0.65rem;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.chase-notes-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.65rem;
+}
+
+.chase-notes-list__item {
+  padding: 0.65rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg);
+}
+
+.chase-notes-list__body {
+  margin: 0;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.chase-notes-list__time {
+  display: block;
+  margin-top: 0.35rem;
+  color: var(--color-text-muted);
+  font-size: 0.75rem;
+}
+
+.chase-notes-list__empty {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+}
+
 .chase-map {
   height: 28rem;
   border: 1px solid var(--color-border);
@@ -213,6 +345,13 @@
   margin: 0 0 0.25rem;
 }
 
+.chase-dialog__warning {
+  margin: 0;
+  color: var(--color-text-muted);
+  font-size: 0.875rem;
+  line-height: 1.5;
+}
+
 .chase-dialog__form label {
   display: flex;
   flex-direction: column;
@@ -221,7 +360,8 @@
 }
 
 .chase-dialog__form input,
-.chase-dialog__form select {
+.chase-dialog__form select,
+.chase-dialog__form textarea {
   padding: 0.55rem 0.65rem;
   border: 1px solid var(--color-border);
   border-radius: var(--radius-md);

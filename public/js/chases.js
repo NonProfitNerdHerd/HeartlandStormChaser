@@ -3,6 +3,13 @@
   var countEl = document.getElementById("chases-count");
   var bodyEl = document.getElementById("chases-body");
   var refreshBtn = document.getElementById("refresh-btn");
+  var newChaseBtn = document.getElementById("new-chase-btn");
+  var newChaseDialog = document.getElementById("new-chase-dialog");
+  var newChaseForm = document.getElementById("new-chase-form");
+  var newChaseName = document.getElementById("new-chase-name");
+  var newChaseNotes = document.getElementById("new-chase-notes");
+  var newChaseMessage = document.getElementById("new-chase-message");
+  var newChaseCancelBtn = document.getElementById("new-chase-cancel-btn");
 
   function escapeHtml(value) {
     return String(value ?? "")
@@ -48,6 +55,22 @@
     return data;
   }
 
+  function setNewChaseMessage(text, isError) {
+    if (!newChaseMessage) return;
+    newChaseMessage.hidden = !text;
+    newChaseMessage.textContent = text || "";
+    newChaseMessage.className = "chase-message" + (isError ? " chase-message--error" : " chase-message--success");
+  }
+
+  function openNewChaseDialog() {
+    if (!newChaseDialog) return;
+    setNewChaseMessage("");
+    if (newChaseName) newChaseName.value = "";
+    if (newChaseNotes) newChaseNotes.value = "";
+    newChaseDialog.showModal();
+    if (newChaseName) newChaseName.focus();
+  }
+
   function renderChases(chases) {
     var active = chases.filter(function (c) { return c.status === "active" || c.status === "paused"; });
     statusEl.textContent = active.length
@@ -56,7 +79,8 @@
     countEl.textContent = chases.length + " total";
 
     if (!chases.length) {
-      bodyEl.innerHTML = '<tr><td colspan="7" class="chases-empty">No chases recorded yet. Start one from the Android app.</td></tr>';
+      bodyEl.innerHTML =
+        '<tr><td colspan="7" class="chases-empty">No chases recorded yet. Click New to start one.</td></tr>';
       return;
     }
 
@@ -71,7 +95,6 @@
         "<td>" + escapeHtml(formatMoney(chase.total_expenses)) + "</td>" +
         '<td><div class="chases-actions">' +
         '<a class="btn btn--secondary btn--small" href="/chase.html?id=' + encodeURIComponent(chase.id) + '">View</a>' +
-        '<button type="button" class="btn btn--danger btn--small" data-delete-chase="' + escapeHtml(chase.id) + '">Delete</button>' +
         "</div></td>" +
         "</tr>"
       );
@@ -89,20 +112,54 @@
     }
   }
 
-  bodyEl.addEventListener("click", async function (event) {
-    var button = event.target.closest("[data-delete-chase]");
-    if (!button) return;
-    var chaseId = button.getAttribute("data-delete-chase");
-    if (!chaseId) return;
-    if (!window.confirm("Delete this chase and all of its GPS points and expenses?")) return;
+  async function createChase(event) {
+    event.preventDefault();
+    var name = newChaseName ? newChaseName.value.trim() : "";
+    if (!name) {
+      setNewChaseMessage("Enter a chase name.", true);
+      return;
+    }
+
+    setNewChaseMessage("Creating chase…", false);
 
     try {
-      await api("/api/chases/" + encodeURIComponent(chaseId), { method: "DELETE" });
+      var data = await api("/api/chases", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          chase_name: name,
+          notes: newChaseNotes ? newChaseNotes.value.trim() : "",
+        }),
+      });
+
+      if (newChaseDialog) {
+        newChaseDialog.close();
+      }
+
+      if (data.chase && data.chase.id) {
+        window.location.href = "/chase.html?id=" + encodeURIComponent(data.chase.id);
+        return;
+      }
+
       await loadChases();
     } catch (error) {
-      window.alert(error.message);
+      setNewChaseMessage(error.message, true);
     }
-  });
+  }
+
+  if (newChaseBtn) {
+    newChaseBtn.addEventListener("click", openNewChaseDialog);
+  }
+
+  if (newChaseCancelBtn && newChaseDialog) {
+    newChaseCancelBtn.addEventListener("click", function () {
+      newChaseDialog.close();
+    });
+  }
+
+  if (newChaseForm) {
+    newChaseForm.addEventListener("submit", createChase);
+  }
 
   refreshBtn.addEventListener("click", loadChases);
   loadChases();

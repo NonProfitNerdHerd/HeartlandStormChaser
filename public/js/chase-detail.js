@@ -7,12 +7,26 @@
   var summaryEl = document.getElementById("chase-summary");
   var notesEl = document.getElementById("chase-notes");
   var notesMessageEl = document.getElementById("notes-message");
+  var notesListEl = document.getElementById("chase-notes-body");
+  var notesSectionEl = document.getElementById("chase-notes-section");
   var breakdownEl = document.getElementById("expense-breakdown");
   var expenseTotalEl = document.getElementById("expense-total");
   var expensesBody = document.getElementById("expenses-body");
   var completeBtn = document.getElementById("complete-btn");
   var deleteBtn = document.getElementById("delete-btn");
+  var deleteChaseDialog = document.getElementById("delete-chase-dialog");
+  var deleteChaseForm = document.getElementById("delete-chase-form");
+  var deleteChaseConfirmInput = document.getElementById("delete-chase-confirm-input");
+  var deleteChaseConfirmBtn = document.getElementById("delete-chase-confirm-btn");
+  var deleteChaseCancelBtn = document.getElementById("delete-chase-cancel-btn");
+  var deleteChaseMessage = document.getElementById("delete-chase-message");
   var saveNotesBtn = document.getElementById("save-notes-btn");
+  var googleMapsBtn = document.getElementById("chase-map-google-btn");
+  var addExpenseForm = document.getElementById("add-expense-form");
+  var addExpenseCategory = document.getElementById("add-expense-category");
+  var addExpenseAmount = document.getElementById("add-expense-amount");
+  var addExpenseDescription = document.getElementById("add-expense-description");
+  var addExpenseMessage = document.getElementById("add-expense-message");
   var expenseDialog = document.getElementById("expense-dialog");
   var expenseForm = document.getElementById("expense-form");
   var expenseCancelBtn = document.getElementById("expense-cancel-btn");
@@ -43,15 +57,24 @@
     return "$" + Number(value || 0).toFixed(2);
   }
 
-  function toDatetimeLocalValue(value) {
-    if (!value) return "";
-    var normalized = value.includes("T") ? value : value.replace(" ", "T");
-    var withZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized) ? normalized : normalized + "Z";
-    var date = new Date(withZone);
-    if (Number.isNaN(date.getTime())) return "";
-    var pad = function (n) { return String(n).padStart(2, "0"); };
-    return date.getFullYear() + "-" + pad(date.getMonth() + 1) + "-" + pad(date.getDate()) +
-      "T" + pad(date.getHours()) + ":" + pad(date.getMinutes());
+  function setInlineMessage(el, text, isError) {
+    if (!el) return;
+    el.hidden = !text;
+    el.textContent = text || "";
+    el.className = "chase-message" + (isError ? " chase-message--error" : " chase-message--success");
+  }
+
+  function readExpensePayload(categoryEl, amountEl, descriptionEl) {
+    var amount = Number(amountEl.value);
+    if (!Number.isFinite(amount) || amount < 0) {
+      throw new Error("Enter a valid amount.");
+    }
+
+    return {
+      category: categoryEl.value,
+      amount: amount,
+      description: descriptionEl.value.trim(),
+    };
   }
 
   async function api(path, options) {
@@ -61,6 +84,54 @@
       throw new Error(data.error || "Request failed");
     }
     return data;
+  }
+
+  function buildGoogleMapsUrl(points, chase) {
+    var latlngs = (points || [])
+      .filter(function (p) { return p.lat != null && p.lng != null; })
+      .map(function (p) { return [p.lat, p.lng]; });
+
+    if (!latlngs.length && chase && chase.start_lat != null && chase.start_lng != null) {
+      latlngs.push([chase.start_lat, chase.start_lng]);
+    }
+
+    if (!latlngs.length) {
+      return null;
+    }
+
+    if (latlngs.length === 1) {
+      return "https://www.google.com/maps?q=" + latlngs[0][0] + "," + latlngs[0][1];
+    }
+
+    var selected = [latlngs[0]];
+    if (latlngs.length > 2) {
+      var maxMiddle = 8;
+      var step = Math.max(1, Math.ceil((latlngs.length - 2) / maxMiddle));
+      for (var i = 1; i < latlngs.length - 1; i += step) {
+        if (selected.length >= 9) {
+          break;
+        }
+        selected.push(latlngs[i]);
+      }
+    }
+    selected.push(latlngs[latlngs.length - 1]);
+
+    return "https://www.google.com/maps/dir/" + selected.map(function (ll) {
+      return ll[0] + "," + ll[1];
+    }).join("/");
+  }
+
+  function updateGoogleMapsButton(points, chase) {
+    if (!googleMapsBtn) return;
+    var url = buildGoogleMapsUrl(points, chase);
+    if (!url) {
+      googleMapsBtn.hidden = true;
+      googleMapsBtn.removeAttribute("href");
+      return;
+    }
+
+    googleMapsBtn.href = url;
+    googleMapsBtn.hidden = false;
   }
 
   function initMap() {
@@ -73,6 +144,7 @@
   }
 
   function renderRoute(points, chase) {
+    updateGoogleMapsButton(points, chase);
     initMap();
     if (!map) return;
 
@@ -124,7 +196,6 @@
   function renderSummary(chase, breakdown) {
     nameEl.textContent = chase.chase_name;
     metaEl.textContent = "Status: " + chase.status + " · Device " + chase.device_id;
-    notesEl.value = chase.notes || "";
 
     summaryEl.innerHTML =
       "<dt>Status</dt><dd>" + escapeHtml(chase.status) + "</dd>" +
@@ -144,6 +215,26 @@
 
     expenseTotalEl.textContent = "Total: " + formatMoney(chase.total_expenses);
     completeBtn.hidden = chase.status === "completed";
+  }
+
+  function renderNotes(notes) {
+    if (!notesListEl || !notesSectionEl) return;
+
+    if (!notes || !notes.length) {
+      notesSectionEl.hidden = true;
+      notesListEl.innerHTML = "";
+      return;
+    }
+
+    notesSectionEl.hidden = false;
+    notesListEl.innerHTML = notes.map(function (note) {
+      return (
+        "<tr>" +
+        "<td>" + escapeHtml(formatTimestamp(note.created_at)) + "</td>" +
+        "<td>" + escapeHtml(note.body) + "</td>" +
+        "</tr>"
+      );
+    }).join("");
   }
 
   function renderExpenses(expenses) {
@@ -174,9 +265,6 @@
     document.getElementById("expense-category").value = expense ? expense.category : "Gas";
     document.getElementById("expense-amount").value = expense ? expense.amount : "";
     document.getElementById("expense-description").value = expense ? expense.description || "" : "";
-    document.getElementById("expense-time").value = expense
-      ? toDatetimeLocalValue(expense.expense_time)
-      : toDatetimeLocalValue(new Date().toISOString());
     expenseDialog.showModal();
   }
 
@@ -190,6 +278,7 @@
       var data = await api("/api/chases/" + encodeURIComponent(chaseId));
       currentChase = data.chase;
       renderSummary(data.chase, data.expense_breakdown);
+      renderNotes(data.notes || []);
       renderExpenses(data.expenses || []);
       renderRoute(data.points || [], data.chase);
     } catch (error) {
@@ -199,21 +288,54 @@
 
   saveNotesBtn.addEventListener("click", async function () {
     if (!chaseId) return;
+
+    var noteBody = notesEl.value.trim();
+    if (!noteBody) {
+      setInlineMessage(notesMessageEl, "Enter a note before adding.", true);
+      return;
+    }
+
     try {
-      await api("/api/chases/" + encodeURIComponent(chaseId), {
-        method: "PUT",
+      await api("/api/chases/" + encodeURIComponent(chaseId) + "/notes", {
+        method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: notesEl.value }),
+        body: JSON.stringify({ body: noteBody }),
       });
-      notesMessageEl.hidden = false;
-      notesMessageEl.className = "chase-message chase-message--success";
-      notesMessageEl.textContent = "Notes saved.";
+      notesEl.value = "";
+      setInlineMessage(notesMessageEl, "Note added.", false);
+      await loadChase();
     } catch (error) {
-      notesMessageEl.hidden = false;
-      notesMessageEl.className = "chase-message chase-message--error";
-      notesMessageEl.textContent = error.message;
+      setInlineMessage(notesMessageEl, error.message, true);
     }
   });
+
+  if (addExpenseForm) {
+    addExpenseForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (!chaseId) return;
+
+      try {
+        var payload = readExpensePayload(
+          addExpenseCategory,
+          addExpenseAmount,
+          addExpenseDescription,
+        );
+
+        await api("/api/chases/" + encodeURIComponent(chaseId) + "/expenses", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload),
+        });
+
+        addExpenseAmount.value = "";
+        addExpenseDescription.value = "";
+        setInlineMessage(addExpenseMessage, "Expense added.", false);
+        await loadChase();
+      } catch (error) {
+        setInlineMessage(addExpenseMessage, error.message, true);
+      }
+    });
+  }
 
   completeBtn.addEventListener("click", async function () {
     if (!chaseId || !window.confirm("Mark this chase as completed?")) return;
@@ -225,15 +347,60 @@
     }
   });
 
-  deleteBtn.addEventListener("click", async function () {
-    if (!chaseId || !window.confirm("Delete this chase permanently?")) return;
-    try {
-      await api("/api/chases/" + encodeURIComponent(chaseId), { method: "DELETE" });
-      window.location.href = "/chases.html";
-    } catch (error) {
-      window.alert(error.message);
+  deleteBtn.addEventListener("click", function () {
+    if (!chaseId || !deleteChaseDialog) return;
+    if (deleteChaseConfirmInput) {
+      deleteChaseConfirmInput.value = "";
+    }
+    if (deleteChaseConfirmBtn) {
+      deleteChaseConfirmBtn.disabled = true;
+    }
+    setInlineMessage(deleteChaseMessage, "", false);
+    deleteChaseDialog.showModal();
+    if (deleteChaseConfirmInput) {
+      deleteChaseConfirmInput.focus();
     }
   });
+
+  if (deleteChaseConfirmInput && deleteChaseConfirmBtn) {
+    deleteChaseConfirmInput.addEventListener("input", function () {
+      deleteChaseConfirmBtn.disabled = deleteChaseConfirmInput.value.trim() !== "delete";
+    });
+  }
+
+  if (deleteChaseCancelBtn && deleteChaseDialog) {
+    deleteChaseCancelBtn.addEventListener("click", function () {
+      deleteChaseDialog.close();
+    });
+  }
+
+  if (deleteChaseForm) {
+    deleteChaseForm.addEventListener("submit", async function (event) {
+      event.preventDefault();
+      if (!chaseId || !deleteChaseConfirmInput) return;
+      if (deleteChaseConfirmInput.value.trim() !== "delete") {
+        setInlineMessage(deleteChaseMessage, 'Type "delete" to confirm.', true);
+        return;
+      }
+
+      if (deleteChaseConfirmBtn) {
+        deleteChaseConfirmBtn.disabled = true;
+      }
+
+      try {
+        await api("/api/chases/" + encodeURIComponent(chaseId), { method: "DELETE" });
+        if (deleteChaseDialog) {
+          deleteChaseDialog.close();
+        }
+        window.location.href = "/chases.html";
+      } catch (error) {
+        setInlineMessage(deleteChaseMessage, error.message, true);
+        if (deleteChaseConfirmBtn) {
+          deleteChaseConfirmBtn.disabled = false;
+        }
+      }
+    });
+  }
 
   expensesBody.addEventListener("click", async function (event) {
     var editBtn = event.target.closest("[data-edit-expense]");
@@ -265,29 +432,20 @@
 
   expenseForm.addEventListener("submit", async function (event) {
     event.preventDefault();
-    if (!chaseId) return;
-
-    var payload = {
-      category: document.getElementById("expense-category").value,
-      amount: Number(document.getElementById("expense-amount").value),
-      description: document.getElementById("expense-description").value,
-      expense_time: new Date(document.getElementById("expense-time").value).toISOString(),
-    };
+    if (!chaseId || !editingExpenseId) return;
 
     try {
-      if (editingExpenseId) {
-        await api("/api/chases/" + encodeURIComponent(chaseId) + "/expenses/" + encodeURIComponent(editingExpenseId), {
-          method: "PUT",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      } else {
-        await api("/api/chases/" + encodeURIComponent(chaseId) + "/expenses", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-        });
-      }
+      var payload = readExpensePayload(
+        document.getElementById("expense-category"),
+        document.getElementById("expense-amount"),
+        document.getElementById("expense-description"),
+      );
+
+      await api("/api/chases/" + encodeURIComponent(chaseId) + "/expenses/" + encodeURIComponent(editingExpenseId), {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+      });
       expenseDialog.close();
       await loadChase();
     } catch (error) {

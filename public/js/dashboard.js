@@ -287,4 +287,79 @@
 
   refreshDashboard();
   pollTimer = setInterval(refreshDashboard, REFRESH_INTERVAL_MS);
+
+  var healthOutput = document.getElementById("api-health-output");
+  var healthBadge = document.getElementById("api-health-badge");
+
+  function refreshBackendHealth() {
+    if (!healthOutput || !healthBadge) return;
+
+    healthOutput.textContent = "Checking backend…";
+    healthOutput.classList.add("status-panel__body--loading");
+
+    fetch("/api/health")
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
+      })
+      .then(function (data) {
+        healthOutput.classList.remove("status-panel__body--loading");
+        healthOutput.textContent = JSON.stringify(data, null, 2);
+
+        if (data.ok) {
+          healthBadge.textContent = "Online";
+          healthBadge.className = "badge badge--success";
+        } else {
+          healthBadge.textContent = "Degraded";
+          healthBadge.className = "badge badge--warning";
+        }
+      })
+      .catch(function (error) {
+        healthOutput.classList.remove("status-panel__body--loading");
+        healthOutput.textContent = "Could not reach /api/health: " + error.message;
+        healthBadge.textContent = "Offline";
+        healthBadge.className = "badge badge--danger";
+      });
+  }
+
+  refreshBackendHealth();
+
+  function fetchEndpointStatus(url, outputId, badgeId) {
+    var output = document.getElementById(outputId);
+    var badge = document.getElementById(badgeId);
+    if (!output || !badge) return;
+
+    output.textContent = "Checking…";
+    output.classList.add("status-panel__body--loading");
+
+    fetch(url)
+      .then(function (response) {
+        if (!response.ok) {
+          throw new Error("HTTP " + response.status);
+        }
+        return response.json();
+      })
+      .then(function (data) {
+        output.classList.remove("status-panel__body--loading");
+        output.textContent = JSON.stringify(data, null, 2);
+
+        if (data.ok) {
+          badge.textContent = "Connected";
+          badge.className = "badge badge--success";
+        } else {
+          badge.textContent = "Error";
+          badge.className = "badge badge--danger";
+        }
+      })
+      .catch(function (error) {
+        output.classList.remove("status-panel__body--loading");
+        output.textContent = "Could not reach " + url + ": " + error.message;
+        badge.textContent = "Offline";
+        badge.className = "badge badge--danger";
+      });
+  }
+
+  fetchEndpointStatus("/api/db-test", "db-output", "db-badge");
 })();

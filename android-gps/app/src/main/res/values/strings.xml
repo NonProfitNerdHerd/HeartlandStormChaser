@@ -137,6 +137,9 @@
     <string name="expense_category_gas">Gas</string>
     <string name="expense_category_food">Food</string>
     <string name="expense_category_hotel">Hotel</string>
+    <string name="expense_category_equipment">Equipment</string>
+    <string name="expense_category_souveniers">Souveniers</string>
+    <string name="expense_category_software">Software Expense</string>
     <string name="expense_category_other">Other</string>
     <string name="expense_row">%1$s · $%2$.2f</string>
     <string name="chase_end_confirm_title">End chase?</string>

@@ -7,7 +7,7 @@
 .warnings-main {
   display: flex;
   flex-direction: column;
-  height: calc(100vh - 3.25rem);
+  height: calc(100vh - var(--site-header-height));
   max-width: none;
   padding: 0;
 }

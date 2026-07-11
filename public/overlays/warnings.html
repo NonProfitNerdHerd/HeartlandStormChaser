@@ -1,71 +1,32 @@
 <!DOCTYPE html>
-
 <html lang="en">
-
   <head>
-
     <meta charset="UTF-8" />
-
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
     <title>Warnings Overlay · HeartlandStormChaser</title>
-
     <link rel="stylesheet" href="/css/overlay-warnings.css" />
-
   </head>
-
   <body class="overlay-body overlay-body--empty">
-
     <div class="warnings-stage warnings-stage--hidden" id="warnings-root" aria-live="polite">
-
       <div class="warnings-bar" id="warnings-bar" hidden>
-
-        <div class="warnings-row warnings-row--primary">
-
-          <div class="warnings-cell warnings-cell--event" id="warning-event">—</div>
-
-          <div class="warnings-cell warnings-cell--until" id="warning-until">—</div>
-
+        <div class="warnings-cell warnings-cell--event" id="warning-event">—</div>
+        <div class="warnings-cell warnings-cell--until" id="warning-until">—</div>
+        <div class="warnings-cell warnings-cell--expires" id="warning-expires-wrap">
+          <span class="warnings-new-badge" id="warning-new-badge" hidden>NEW</span>
+          <span class="warnings-expires-text" id="warning-expires">—</span>
         </div>
-
-        <div class="warnings-row warnings-row--meta">
-
-          <div class="warnings-cell warnings-cell--expires" id="warning-expires-wrap">
-
-            <span class="warnings-new-badge" id="warning-new-badge" hidden>NEW</span>
-
-            <span class="warnings-expires-text" id="warning-expires">—</span>
-
-          </div>
-
-          <div class="warnings-cell warnings-cell--detail">
-
-            <div class="warnings-detail-viewport" id="warning-detail-viewport">
-
-              <div class="warnings-detail-track" id="warning-detail-track">
-
-                <span class="warnings-detail-run" id="warning-detail-a"></span>
-
-                <span class="warnings-detail-run" id="warning-detail-b" aria-hidden="true"></span>
-
-              </div>
-
+        <div class="warnings-cell warnings-cell--detail" id="warning-detail-cell">
+          <div class="warnings-detail-viewport" id="warning-detail-viewport">
+            <div class="warnings-detail-track" id="warning-detail-track">
+              <span class="warnings-detail-run" id="warning-detail-a"></span>
+              <span class="warnings-detail-run" id="warning-detail-b" aria-hidden="true"></span>
             </div>
-
           </div>
-
         </div>
-
       </div>
-
     </div>
-
-
 
     <script src="/js/warning-sounds.js"></script>
     <script src="/js/overlay-warnings.js"></script>
-
   </body>
-
 </html>
-

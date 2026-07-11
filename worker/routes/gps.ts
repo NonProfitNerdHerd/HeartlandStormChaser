@@ -11,6 +11,7 @@ import {
   getGpsConnectionStatus,
   GPS_HISTORY_INTERVAL_SECONDS,
 } from "../lib/gps-status";
+import { getPlatformSource } from "../lib/gps-platform";
 import type { Env } from "../index";
 
 const JSON_HEADERS = { "Content-Type": "application/json" };
@@ -423,6 +424,51 @@ async function handleListDevices(env: Env): Promise<Response> {
   });
 }
 
+function parseUtcTimestamp(value: string | null | undefined): number | null {
+  if (!value) return null;
+  const normalized = value.includes("T") ? value : value.replace(" ", "T");
+  const withZone = /(?:Z|[+-]\d{2}:\d{2})$/i.test(normalized)
+    ? normalized
+    : `${normalized}Z`;
+  const parsed = Date.parse(withZone);
+  return Number.isNaN(parsed) ? null : parsed;
+}
+
+async function handleLatestActive(env: Env): Promise<Response> {
+  const platform = await getPlatformSource(env);
+
+  if (!platform?.location) {
+    return json({
+      ok: false,
+      active: false,
+      message: platform
+        ? "Platform GPS source has no location yet"
+        : "No platform GPS source selected",
+    });
+  }
+
+  const location = platform.location;
+  const receivedAt = parseUtcTimestamp(location.received_at_utc);
+  const ageSeconds =
+    receivedAt == null ? null : Math.max(0, Math.round((Date.now() - receivedAt) / 1000));
+
+  return json({
+    ok: true,
+    active: true,
+    device_id: platform.device_id,
+    device_name: platform.device_name,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    accuracy_meters: location.accuracy_meters,
+    heading_degrees: location.heading_degrees,
+    speed_mph: location.speed_mph,
+    status: location.status,
+    received_at_utc: location.received_at_utc,
+    timestamp_utc: location.timestamp_utc,
+    age_seconds: ageSeconds,
+  });
+}
+
 async function handleGetPlatform(env: Env): Promise<Response> {
   const device = await env.DB.prepare(
     `SELECT id, device_name, is_platform_source, enabled, last_seen_at,
@@ -516,6 +562,10 @@ export async function handleGps(request: Request, env: Env): Promise<Response> {
 
     if (pathname === "/api/gps/devices" && method === "GET") {
       return handleListDevices(env);
+    }
+
+    if (pathname === "/api/gps/latest-active" && method === "GET") {
+      return handleLatestActive(env);
     }
 
     if (pathname === "/api/gps/platform" && method === "GET") {

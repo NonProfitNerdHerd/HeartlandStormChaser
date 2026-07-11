@@ -1,3 +1,9 @@
 # Local dev secrets (not committed). Copy to .dev.vars and add your keys.
 YOUTUBE_API_KEY=your_youtube_data_api_key_here
 GPS_PAIRING_PIN=your_gps_pairing_pin_here
+WEB_AUTH_BOOTSTRAP_PASSWORD=your_bootstrap_password_here
+
+# Broadcast Control Center → local OBS listener (Worker proxies; never expose OBS password to the browser)
+# Start services/obs-listener, then point these at it (localhost for wrangler, or a Cloudflare Tunnel URL in production).
+OBS_LISTENER_URL=http://127.0.0.1:8791
+OBS_LISTENER_TOKEN=change-me-to-match-LISTENER_AUTH_TOKEN

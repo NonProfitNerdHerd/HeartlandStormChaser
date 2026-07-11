@@ -1,3 +1,6 @@
+import { enforceRequestAuth } from "./lib/route-auth";
+import { handleAuth } from "./routes/auth";
+import { handleBroadcast } from "./routes/broadcast";
 import { handleChases } from "./routes/chases";
 import { handleChasersStreams } from "./routes/chasers-streams";
 import { handleDashboard } from "./routes/dashboard";
@@ -14,12 +17,31 @@ export interface Env {
   DB: D1Database;
   ENVIRONMENT?: string;
   YOUTUBE_API_KEY?: string;
+  /** Google OAuth client for YouTube Live Streaming API (Broadcast Control). */
+  YOUTUBE_CLIENT_ID?: string;
+  YOUTUBE_CLIENT_SECRET?: string;
+  /** Optional override; defaults to {origin}/api/broadcast/youtube/oauth/callback */
+  YOUTUBE_REDIRECT_URI?: string;
   GPS_PAIRING_PIN?: string;
+  WEB_AUTH_BOOTSTRAP_PASSWORD?: string;
+  /** Base URL of the local OBS listener (e.g. Cloudflare Tunnel or LAN via tunnel). */
+  OBS_LISTENER_URL?: string;
+  /** Shared bearer token for Worker → OBS listener requests. */
+  OBS_LISTENER_TOKEN?: string;
 }
 
 export default {
-  async fetch(request: Request, env: Env): Promise<Response> {
+  async fetch(request: Request, env: Env, ctx: ExecutionContext): Promise<Response> {
     const url = new URL(request.url);
+
+    const authGate = await enforceRequestAuth(request, env);
+    if (authGate) {
+      return authGate;
+    }
+
+    if (url.pathname.startsWith("/api/auth")) {
+      return handleAuth(request, env);
+    }
 
     if (url.pathname === "/api/health" && request.method === "GET") {
       return handleHealth(request, env);
@@ -54,11 +76,23 @@ export default {
     }
 
     if (url.pathname.startsWith("/api/overlay") || url.pathname.startsWith("/api/overlays")) {
-      return handleOverlays(request, env);
+      return handleOverlays(request, env, ctx);
     }
 
     if (url.pathname.startsWith("/api/geocode")) {
       return handleGeocode(request);
+    }
+
+    if (url.pathname.startsWith("/api/broadcast")) {
+      return handleBroadcast(request, env);
+    }
+
+    if (url.pathname === "/weatherfront") {
+      return Response.redirect(`${url.origin}/weatherfront/`, 301);
+    }
+
+    if (url.pathname === "/broadcast/control") {
+      return Response.redirect(`${url.origin}/broadcast/control/`, 301);
     }
 
     return env.ASSETS.fetch(request);

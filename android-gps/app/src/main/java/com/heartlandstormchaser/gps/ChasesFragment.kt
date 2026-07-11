@@ -375,6 +375,9 @@ class ChasesFragment : Fragment() {
             getString(R.string.expense_category_gas),
             getString(R.string.expense_category_food),
             getString(R.string.expense_category_hotel),
+            getString(R.string.expense_category_equipment),
+            getString(R.string.expense_category_souveniers),
+            getString(R.string.expense_category_software),
             getString(R.string.expense_category_other),
         )
 

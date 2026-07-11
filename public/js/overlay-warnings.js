@@ -60,6 +60,10 @@
     untilEl.style.backgroundColor = alert.color_primary_right;
     expiresWrap.style.backgroundColor = alert.color_meta_left;
     detailViewport.style.backgroundColor = alert.color_primary_left;
+    var detailCell = document.getElementById("warning-detail-cell");
+    if (detailCell) {
+      detailCell.style.backgroundColor = alert.color_primary_left;
+    }
   }
 
   function playEnterAnimation() {

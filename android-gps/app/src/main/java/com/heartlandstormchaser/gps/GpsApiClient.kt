@@ -755,6 +755,16 @@ class GpsApiClient(
         )
     }
 
+    private fun Request.Builder.withOptionalDeviceAuth(path: String): Request.Builder {
+        if (!path.endsWith("/gps/pair")) {
+            val token = deviceToken?.trim().orEmpty()
+            if (token.isNotEmpty()) {
+                addHeader("Authorization", "Bearer $token")
+            }
+        }
+        return this
+    }
+
     private fun <T> postJson(
         path: String,
         payload: JSONObject,
@@ -765,6 +775,7 @@ class GpsApiClient(
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
             .addHeader("Content-Type", "application/json")
             .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .withOptionalDeviceAuth(path)
 
         if (auth) {
             builder.addHeader("Authorization", "Bearer ${deviceToken?.trim().orEmpty()}")
@@ -783,6 +794,7 @@ class GpsApiClient(
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
             .addHeader("Content-Type", "application/json")
             .put(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
+            .withOptionalDeviceAuth(path)
 
         if (auth) {
             builder.addHeader("Authorization", "Bearer ${deviceToken?.trim().orEmpty()}")
@@ -799,6 +811,7 @@ class GpsApiClient(
         val builder = Request.Builder()
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
             .get()
+            .withOptionalDeviceAuth(path)
 
         if (auth) {
             builder.addHeader("Authorization", "Bearer ${deviceToken?.trim().orEmpty()}")
@@ -814,6 +827,7 @@ class GpsApiClient(
         val request = Request.Builder()
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
             .delete()
+            .withOptionalDeviceAuth(path)
             .build()
 
         return execute(request, onSuccess)

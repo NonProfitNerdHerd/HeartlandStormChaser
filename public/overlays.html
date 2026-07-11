@@ -17,16 +17,14 @@
       <div class="site-header__inner">
         <a class="site-logo" href="/">HeartlandStormChaser</a>
         <nav class="site-nav" aria-label="Main navigation">
-          <a class="nav-link" href="/" data-nav="home">Home</a>
-          <a class="nav-link" href="/dashboard.html" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
           <a class="nav-link" href="/gps.html" data-nav="gps">GPS</a>
           <a class="nav-link" href="/warnings.html" data-nav="warnings">Warnings</a>
           <a class="nav-link" href="/overlays.html" data-nav="overlays">Overlays</a>
+          <a class="nav-link" href="/weatherfront/" data-nav="weatherfront">WeatherFront</a>
           <a class="nav-link" href="/chases.html" data-nav="chases">Chases</a>
-          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams"
-            >Chasers Streams</a
-          >
-          <a class="nav-link" href="/settings.html" data-nav="settings">Settings</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams">Streams</a>
+          <a class="nav-link" href="/broadcast/control/" data-nav="broadcast">Broadcast</a>
         </nav>
       </div>
     </header>
@@ -63,10 +61,17 @@
     </main>
 
     <footer class="site-footer">
-      <p>HeartlandStormChaser · OBS overlays</p>
+      <p class="site-footer__tagline">HeartlandStormChaser · OBS overlays</p>
+      <div class="site-footer__auth" id="site-footer-auth">
+        <span class="site-footer__auth-user" id="site-footer-auth-user" hidden></span>
+        <a class="site-footer__auth-link" id="site-footer-sign-in" href="/login.html">Sign in</a>
+        <button type="button" class="btn btn--secondary btn--small site-footer__auth-btn" id="site-footer-sign-out" hidden>Sign out</button>
+      </div>
     </footer>
 
+    <script src="/js/auth-footer.js"></script>
     <script src="/js/nav.js"></script>
+    <script type="module" src="/js/broadcast/camera-dock-persist.js"></script>
     <script src="/js/overlays.js"></script>
   </body>
 </html>

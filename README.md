@@ -46,6 +46,7 @@ Set `GPS_PAIRING_PIN` in `.dev.vars` for local GPS pairing tests.
 | Chasers Streams | `/chasers-streams.html` |
 | Settings | `/settings.html` |
 | OBS GPS/weather overlay | `/overlays/gps-weather.html` |
+| Broadcast Control Center | `/broadcast/control/` |
 
 ## API endpoints
 
@@ -60,6 +61,7 @@ Set `GPS_PAIRING_PIN` in `.dev.vars` for local GPS pairing tests.
 | GET | `/api/weather/platform` | Weather for platform location |
 | GET/PUT | `/api/overlay/settings` | Overlay city/state/ticker settings |
 | GET | `/api/overlays/gps-weather-data` | Combined data for OBS overlay |
+| GET | `/api/broadcast/status` | OBS listener + telemetry aggregate |
 
 ## Android app
 
@@ -97,8 +99,22 @@ Set these in **Workers & Pages → heartlandstormchaser → Settings → Variabl
 
 | Secret | Used for |
 |--------|----------|
-| `GPS_PAIRING_PIN` | Android/web device pairing |
+| `GPS_PAIRING_PIN` | Android device pairing |
+| `WEB_AUTH_BOOTSTRAP_PASSWORD` | Creates the first web user `IJRebout` on first sign-in when no users exist yet |
+| `OBS_LISTENER_URL` | Base URL of the local OBS listener (tunnel or localhost for `wrangler dev`) |
+| `OBS_LISTENER_TOKEN` | Bearer token matching the listener `LISTENER_AUTH_TOKEN` |
 | `YOUTUBE_API_KEY` | Chasers Streams live status |
+| `YOUTUBE_CLIENT_ID` | YouTube Live OAuth (Broadcast Control schedule/go-live) |
+| `YOUTUBE_CLIENT_SECRET` | YouTube Live OAuth client secret |
+| `YOUTUBE_REDIRECT_URI` | Optional override; default `{worker origin}/api/broadcast/youtube/oauth/callback` |
+
+### Web sign-in
+
+- **Android** still uses the pairing PIN only.
+- **Web** uses username/password sign-in at `/login.html`.
+- The first account is bootstrapped as **`IJRebout`** with the `admin` role when you sign in for the first time and no users exist yet.
+- Set `WEB_AUTH_BOOTSTRAP_PASSWORD` as a Worker secret, then sign in once to create that account. After that, you can add more users in D1 later as permissions evolve.
+- OBS overlay pages under `/overlays/` and their public overlay APIs stay open without web login.
 
 ## Deploy
 
@@ -115,13 +131,19 @@ Full local dev, D1, Git, and deployment guide:
 
 **[docs/WORKFLOW.md](docs/WORKFLOW.md)**
 
+Broadcast Control Center (OBS listener setup):
+
+**[docs/broadcast-control.md](docs/broadcast-control.md)**
+
 ## Project layout
 
 ```
 public/          → Static frontend (HTML/CSS/JS)
 public/overlays/ → OBS browser source pages
+public/broadcast/→ Broadcast Control Center page
 worker/          → Cloudflare Worker API routes
-worker/lib/      → GPS auth, NWS weather, DB helpers
+worker/lib/      → GPS auth, NWS weather, OBS listener client, DB helpers
+services/obs-listener/ → Local OBS WebSocket listener (Node/TS)
 migrations/      → D1 SQL schema changes
 android-gps/     → Android GPS sender app (Kotlin)
 wrangler.jsonc   → Cloudflare Worker + D1 config

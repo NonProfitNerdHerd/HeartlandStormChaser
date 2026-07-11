@@ -16,6 +16,7 @@ export interface NormalizedWeather {
   wind_gusts_mph: number | null;
   pressure_hpa: number | null;
   visibility_miles: number | null;
+  ceiling_ft: number | null;
   fetched_at: string;
   observation_at: string | null;
   location_city: string | null;
@@ -110,6 +111,40 @@ function degreesToCardinal(degrees: number): string {
   return directions[Math.round(degrees / 22.5) % 16];
 }
 
+interface NwsCloudLayer {
+  base?: { value?: number | null; unitCode?: string | null };
+  amount?: string | null;
+}
+
+function parseCeilingFt(layers: NwsCloudLayer[] | undefined | null): number | null {
+  if (!layers?.length) {
+    return null;
+  }
+
+  let lowestMeters: number | null = null;
+  for (const layer of layers) {
+    const amount = (layer.amount || "").toUpperCase();
+    if (amount === "CLR" || amount === "SKC" || amount === "N/A") {
+      continue;
+    }
+
+    const baseMeters = layer.base?.value;
+    if (baseMeters == null || !Number.isFinite(baseMeters)) {
+      continue;
+    }
+
+    if (lowestMeters == null || baseMeters < lowestMeters) {
+      lowestMeters = baseMeters;
+    }
+  }
+
+  if (lowestMeters == null) {
+    return null;
+  }
+
+  return Math.round(lowestMeters * 3.28084);
+}
+
 function parseWindSpeedString(value: string | null | undefined): number | null {
   if (!value) return null;
   const match = /([\d.]+)/.exec(value);
@@ -186,6 +221,7 @@ function rowToNormalized(row: WeatherLatestRow, fromCache: boolean, stale: boole
     wind_gusts_mph: row.wind_gusts,
     pressure_hpa: row.pressure,
     visibility_miles: row.visibility,
+    ceiling_ft: null,
     fetched_at: row.fetched_at,
     observation_at: observationAt,
     location_city: locationCity,
@@ -264,6 +300,7 @@ async function fetchLatestObservation(
               windGust?: NwsQuantity;
               barometricPressure?: NwsQuantity;
               visibility?: NwsQuantity;
+              cloudLayers?: NwsCloudLayer[];
             };
           };
 
@@ -285,6 +322,7 @@ async function fetchLatestObservation(
               wind_gusts_mph: roundNullable(convertQuantityToMph(properties.windGust), 1),
               pressure_hpa: roundNullable(convertQuantityToHpa(properties.barometricPressure), 1),
               visibility_miles: roundNullable(convertQuantityToMiles(properties.visibility), 1),
+              ceiling_ft: parseCeilingFt(properties.cloudLayers),
               fetched_at: new Date().toISOString(),
               observation_at: properties.timestamp ?? null,
               location_city: null,
@@ -340,6 +378,7 @@ async function fetchLatestObservation(
     wind_gusts_mph: null,
     pressure_hpa: null,
     visibility_miles: null,
+    ceiling_ft: null,
     fetched_at: new Date().toISOString(),
     observation_at: period.startTime ?? null,
     location_city: null,
