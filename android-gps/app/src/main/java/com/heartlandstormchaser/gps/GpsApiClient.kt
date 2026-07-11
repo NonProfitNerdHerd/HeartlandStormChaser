@@ -271,7 +271,8 @@ class GpsApiClient(
             put("device_id", deviceId)
         }
 
-        return postJson("/api/gps/platform", payload, auth = true) { json, _ ->
+        // Public endpoint — do not require auth; still attach token once if present.
+        return postJson("/api/gps/platform", payload, auth = false) { json, _ ->
             val platform = json.optJSONObject("platform_source")
             val activeId = platform?.optString("id").orEmpty()
             PlatformResult(
@@ -755,12 +756,12 @@ class GpsApiClient(
         )
     }
 
-    private fun Request.Builder.withOptionalDeviceAuth(path: String): Request.Builder {
-        if (!path.endsWith("/gps/pair")) {
-            val token = deviceToken?.trim().orEmpty()
-            if (token.isNotEmpty()) {
-                addHeader("Authorization", "Bearer $token")
-            }
+    private fun Request.Builder.withDeviceAuth(required: Boolean = false): Request.Builder {
+        val token = deviceToken?.trim().orEmpty()
+        if (token.isNotEmpty()) {
+            header("Authorization", "Bearer $token")
+        } else if (required) {
+            header("Authorization", "Bearer ")
         }
         return this
     }
@@ -775,10 +776,9 @@ class GpsApiClient(
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
             .addHeader("Content-Type", "application/json")
             .post(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .withOptionalDeviceAuth(path)
 
-        if (auth) {
-            builder.addHeader("Authorization", "Bearer ${deviceToken?.trim().orEmpty()}")
+        if (!path.endsWith("/gps/pair")) {
+            builder.withDeviceAuth(required = auth)
         }
 
         return execute(builder.build(), onSuccess)
@@ -794,11 +794,7 @@ class GpsApiClient(
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
             .addHeader("Content-Type", "application/json")
             .put(payload.toString().toRequestBody(JSON_MEDIA_TYPE))
-            .withOptionalDeviceAuth(path)
-
-        if (auth) {
-            builder.addHeader("Authorization", "Bearer ${deviceToken?.trim().orEmpty()}")
-        }
+            .withDeviceAuth(required = auth)
 
         return execute(builder.build(), onSuccess)
     }
@@ -811,11 +807,7 @@ class GpsApiClient(
         val builder = Request.Builder()
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
             .get()
-            .withOptionalDeviceAuth(path)
-
-        if (auth) {
-            builder.addHeader("Authorization", "Bearer ${deviceToken?.trim().orEmpty()}")
-        }
+            .withDeviceAuth(required = auth)
 
         return execute(builder.build(), onSuccess)
     }
@@ -827,7 +819,7 @@ class GpsApiClient(
         val request = Request.Builder()
             .url(ApiUrlHelper.apiUrl(serverUrl, path))
             .delete()
-            .withOptionalDeviceAuth(path)
+            .withDeviceAuth(required = false)
             .build()
 
         return execute(request, onSuccess)

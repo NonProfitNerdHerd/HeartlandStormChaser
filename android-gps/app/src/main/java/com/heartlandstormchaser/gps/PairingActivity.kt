@@ -52,11 +52,19 @@ class PairingActivity : AppCompatActivity() {
         setLoading(true)
 
         lifecycleScope.launch {
+            // Reuse the same device row only when the name is unchanged.
+            // A new name (e.g. Ike Cell C → Ike Cell D) creates a new device.
+            val reuseDeviceId = preferences.deviceId.takeIf { id ->
+                id.isNotBlank() &&
+                    preferences.deviceName.isNotBlank() &&
+                    preferences.deviceName.equals(deviceName, ignoreCase = true)
+            }
+
             val result = withContext(Dispatchers.IO) {
                 GpsApiClient(serverUrl).pairDevice(
                     pin = pin,
                     deviceName = deviceName,
-                    existingDeviceId = preferences.deviceId.takeIf { it.isNotBlank() },
+                    existingDeviceId = reuseDeviceId,
                 )
             }
 
@@ -70,6 +78,8 @@ class PairingActivity : AppCompatActivity() {
                     deviceId = result.deviceId.orEmpty(),
                     deviceToken = result.deviceToken.orEmpty(),
                 )
+                preferences.isPlatformSource = false
+                preferences.broadcasting = false
                 startActivity(
                     android.content.Intent(this@PairingActivity, MainActivity::class.java).apply {
                         addFlags(android.content.Intent.FLAG_ACTIVITY_CLEAR_TOP or android.content.Intent.FLAG_ACTIVITY_NEW_TASK)

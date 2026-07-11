@@ -129,9 +129,11 @@ class LocationForegroundService : Service() {
                 )
             }
 
-            preferences.lastSentAtMillis = System.currentTimeMillis()
             preferences.lastUploadSuccess = result.success
             preferences.lastUploadError = if (result.success) null else result.error
+            if (result.success) {
+                preferences.lastSentAtMillis = System.currentTimeMillis()
+            }
 
             if (result.success) {
                 ChasePointSync.flushPending(this@LocationForegroundService)
