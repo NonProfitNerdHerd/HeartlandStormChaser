@@ -7,9 +7,9 @@ import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.fragment.app.DialogFragment
 import androidx.lifecycle.lifecycleScope
+import androidx.appcompat.widget.SwitchCompat
 import com.google.android.material.checkbox.MaterialCheckBox
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
-import com.google.android.material.materialswitch.MaterialSwitch
 import com.heartlandstormchaser.gps.databinding.DialogWarningsSettingsBinding
 import com.heartlandstormchaser.gps.databinding.ItemWarningFilterRowBinding
 import com.heartlandstormchaser.gps.databinding.ItemWarningSoundRowBinding
@@ -23,7 +23,7 @@ class WarningsSettingsDialogFragment : DialogFragment() {
     private lateinit var preferences: GpsPreferences
     private lateinit var soundHelper: WarningSoundHelper
     private val filterCheckboxes = mutableMapOf<String, MaterialCheckBox>()
-    private val soundSwitches = mutableMapOf<String, MaterialSwitch>()
+    private val soundSwitches = mutableMapOf<String, SwitchCompat>()
 
     var initialSettings: WarningsSettings? = null
     var onSettingsSaved: (() -> Unit)? = null
