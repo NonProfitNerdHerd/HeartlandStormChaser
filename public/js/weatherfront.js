@@ -1,7 +1,7 @@
 (function () {
   var REFRESH_INTERVAL_MS = 10000;
   var SCALE_STORAGE_KEY = "weatherfront-scale";
-  var WEATHERFRONT_URL = "https://app.weatherfront.com/";
+  var WEATHERFRONT_URL = "/weatherfront-embed/";
 
   var scaleSelect = document.getElementById("scale-select");
   var copyGpsBtn = document.getElementById("copy-gps-btn");
@@ -77,10 +77,12 @@
     if (frameScaler) frameScaler.hidden = false;
   }
 
+  /**
+   * Only use the full-page overlay for hard failures.
+   * Never cover a partially-loading WeatherFront embed with a timeout overlay.
+   */
   function showError(message) {
     if (!errorEl) return;
-    // Keep the iframe visible behind/under the message only if needed —
-    // for a blocked embed, hide the empty frame.
     if (frameScaler) frameScaler.hidden = true;
     errorEl.hidden = false;
     if (errorDetail) errorDetail.textContent = message;
@@ -125,7 +127,7 @@
       " · " +
       latestCoordsText +
       (location.speed_mph != null ? " · " + formatNumber(location.speed_mph, 1) + " mph" : "") +
-      " · platform GPS (not injected into iframe yet)";
+      " · fed into WeatherFront";
 
     setCopyEnabled(true);
   }
@@ -166,7 +168,7 @@
     hideError();
     frame.addEventListener("error", function () {
       showError(
-        "The browser could not load https://app.weatherfront.com/ in this iframe. Try Retry or open it in a new tab.",
+        "The browser could not load the WeatherFront proxy embed. Try Retry, or open WeatherFront in a new tab.",
       );
     });
   }
