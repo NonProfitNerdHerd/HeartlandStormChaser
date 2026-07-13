@@ -119,6 +119,11 @@
   color: #e8e8e8;
 }
 
+/* display:flex above would otherwise override the HTML hidden attribute */
+.weatherfront-error[hidden] {
+  display: none !important;
+}
+
 .weatherfront-error__title {
   margin: 0;
   font-size: 1.125rem;
