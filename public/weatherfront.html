@@ -37,24 +37,12 @@
         <label class="weatherfront-control">
           <span class="weatherfront-control__label">Scale</span>
           <select id="scale-select" class="weatherfront-select" aria-label="WeatherFront display scale">
+            <option value="90">90%</option>
             <option value="100">100%</option>
-            <option value="120">120%</option>
-            <option value="150">150%</option>
+            <option value="110">110%</option>
+            <option value="125">125%</option>
           </select>
         </label>
-
-        <button type="button" class="btn btn--secondary" id="copy-gps-btn" disabled>
-          Copy platform coords
-        </button>
-
-        <a
-          class="btn btn--secondary"
-          id="weatherfront-open-external"
-          href="https://app.weatherfront.com/"
-          target="_blank"
-          rel="noopener noreferrer"
-          >Open WeatherFront</a
-        >
 
         <div class="weatherfront-controls__status">
           <span class="badge badge--muted" id="gps-status-badge">GPS —</span>

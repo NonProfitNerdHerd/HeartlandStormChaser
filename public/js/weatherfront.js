@@ -4,7 +4,6 @@
   var WEATHERFRONT_URL = "/weatherfront-embed/";
 
   var scaleSelect = document.getElementById("scale-select");
-  var copyGpsBtn = document.getElementById("copy-gps-btn");
   var gpsStatusBadge = document.getElementById("gps-status-badge");
   var gpsCoords = document.getElementById("gps-coords");
   var frameScaler = document.getElementById("frame-scaler");
@@ -14,7 +13,6 @@
   var retryBtn = document.getElementById("weatherfront-retry-btn");
 
   var pollTimer = null;
-  var latestCoordsText = null;
 
   function statusBadgeClass(status) {
     if (status === "LIVE") return "badge badge--success";
@@ -51,25 +49,10 @@
     var stored = localStorage.getItem(SCALE_STORAGE_KEY) || "100";
     if (scaleSelect.querySelector('option[value="' + stored + '"]')) {
       scaleSelect.value = stored;
+    } else {
+      scaleSelect.value = "100";
     }
     setScale(scaleSelect.value);
-  }
-
-  function setCopyEnabled(enabled) {
-    copyGpsBtn.disabled = !enabled;
-  }
-
-  async function copyPlatformCoords() {
-    if (!latestCoordsText) return;
-    try {
-      await navigator.clipboard.writeText(latestCoordsText);
-      copyGpsBtn.textContent = "Copied";
-      setTimeout(function () {
-        copyGpsBtn.textContent = "Copy platform coords";
-      }, 1500);
-    } catch (_error) {
-      window.prompt("Copy platform coordinates:", latestCoordsText);
-    }
   }
 
   function hideError() {
@@ -96,8 +79,6 @@
 
   function renderPlatformStatus(data) {
     var platform = data && data.platform_source;
-    latestCoordsText = null;
-    setCopyEnabled(false);
 
     if (!platform) {
       gpsStatusBadge.className = "badge badge--muted";
@@ -119,17 +100,14 @@
       return;
     }
 
-    latestCoordsText =
-      formatNumber(location.latitude, 5) + ", " + formatNumber(location.longitude, 5);
-
     gpsCoords.textContent =
       escapeHtml(platform.device_name) +
       " · " +
-      latestCoordsText +
+      formatNumber(location.latitude, 5) +
+      ", " +
+      formatNumber(location.longitude, 5) +
       (location.speed_mph != null ? " · " + formatNumber(location.speed_mph, 1) + " mph" : "") +
       " · fed into WeatherFront";
-
-    setCopyEnabled(true);
   }
 
   async function refreshPlatformGps() {
@@ -144,8 +122,6 @@
       gpsStatusBadge.className = "badge badge--muted";
       gpsStatusBadge.textContent = "GPS error";
       gpsCoords.textContent = error.message || "Unable to load platform GPS.";
-      latestCoordsText = null;
-      setCopyEnabled(false);
     }
   }
 
@@ -157,8 +133,6 @@
   scaleSelect.addEventListener("change", function () {
     setScale(scaleSelect.value);
   });
-
-  copyGpsBtn.addEventListener("click", copyPlatformCoords);
 
   if (retryBtn) {
     retryBtn.addEventListener("click", reloadFrame);
