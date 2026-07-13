@@ -14,6 +14,7 @@ import { handleWeather } from "./routes/weather";
 import {
   handleWeatherfrontAuthCallback,
   handleWeatherfrontEmbed,
+  handleWeatherfrontRootAssetFallback,
   handleWeatherfrontUpstreamRoute,
 } from "./routes/weatherfront-proxy";
 
@@ -102,6 +103,11 @@ export default {
 
     if (url.pathname === "/weatherfront-embed" || url.pathname.startsWith("/weatherfront-embed/")) {
       return handleWeatherfrontEmbed(request);
+    }
+
+    const weatherfrontRootAsset = await handleWeatherfrontRootAssetFallback(request);
+    if (weatherfrontRootAsset) {
+      return weatherfrontRootAsset;
     }
 
     const weatherfrontUpstream = await handleWeatherfrontUpstreamRoute(request);

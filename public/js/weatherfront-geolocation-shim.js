@@ -2,6 +2,7 @@
   "use strict";
 
   var origin = window.location.origin;
+  var embedPrefix = "/weatherfront-embed";
 
   var UPSTREAM_REWRITES = [
     ["https://platform.weatherfront.com", origin + "/weatherfront-api"],
@@ -16,11 +17,45 @@
     ["https://d.tiles.mapbox.com", origin + "/weatherfront-mapbox-tiles"],
   ];
 
+  var ROOT_ASSET_PREFIXES = ["/assets/", "/icons/", "/data/", "/overlay/"];
+  var ROOT_ASSET_FILES = {
+    "/favicon.png": true,
+    "/mapbox-logo.svg": true,
+  };
+
   var REFRESH_MS = 5000;
   var cachedLocation = null;
   var watches = new Map();
   var watchSeq = 1;
   var pollTimer = null;
+
+  function rewriteRootAssetPath(url) {
+    if (typeof url !== "string" || url.length === 0) return url;
+
+    var path = url;
+    var absOrigin = origin;
+    if (path.indexOf(absOrigin) === 0) {
+      path = path.slice(absOrigin.length);
+    } else if (path.indexOf("https://") === 0 || path.indexOf("http://") === 0) {
+      return url;
+    } else if (path.charAt(0) !== "/") {
+      return url;
+    }
+
+    if (path.indexOf(embedPrefix + "/") === 0 || path === embedPrefix) {
+      return url;
+    }
+
+    for (var i = 0; i < ROOT_ASSET_PREFIXES.length; i++) {
+      if (path.indexOf(ROOT_ASSET_PREFIXES[i]) === 0) {
+        return absOrigin + embedPrefix + path;
+      }
+    }
+    if (ROOT_ASSET_FILES[path.split("?")[0]]) {
+      return absOrigin + embedPrefix + path;
+    }
+    return url;
+  }
 
   function rewriteRequestUrl(url) {
     if (typeof url !== "string") return url;
@@ -31,7 +66,7 @@
         return to + url.slice(from.length);
       }
     }
-    return url;
+    return rewriteRootAssetPath(url);
   }
 
   var originalFetch = window.fetch.bind(window);
@@ -55,6 +90,25 @@
       args[1] = rewriteRequestUrl(String(url));
       return originalOpen.apply(this, args);
     };
+  }
+
+  if (typeof WebSocket !== "undefined") {
+    var OriginalWebSocket = WebSocket;
+    window.WebSocket = function (url, protocols) {
+      var rewritten = rewriteRequestUrl(String(url));
+      if (protocols === undefined) {
+        return new OriginalWebSocket(rewritten);
+      }
+      return new OriginalWebSocket(rewritten, protocols);
+    };
+    window.WebSocket.prototype = OriginalWebSocket.prototype;
+    Object.keys(OriginalWebSocket).forEach(function (key) {
+      try {
+        window.WebSocket[key] = OriginalWebSocket[key];
+      } catch (_error) {
+        /* ignore */
+      }
+    });
   }
 
   try {

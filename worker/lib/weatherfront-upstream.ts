@@ -80,15 +80,57 @@ const STRIP_REQUEST_HEADERS_FOR_CDN = new Set([
 /**
  * Rewrite absolute WeatherFront/Mapbox hosts to absolute same-origin proxy URLs.
  * `requestOrigin` is required (e.g. https://heartlandstormchaser….workers.dev).
+ *
+ * Also rewrite Vite's root BASE_URL / asset helper and root-absolute static paths so
+ * modules resolve under /weatherfront-embed instead of the worker site root.
  */
 export function rewriteWeatherfrontUrls(content: string, requestOrigin: string): string {
   const origin = requestOrigin.replace(/\/+$/, "");
+  const embed = WEATHERFRONT_EMBED_PREFIX;
   let rewritten = content;
 
   for (const [from, pathPrefix] of WEATHERFRONT_HOST_REWRITES) {
     const to = `${origin}${pathPrefix}`;
     rewritten = rewritten.split(from).join(to);
   }
+
+  // Vite production builds hard-code asset URLs as "/" + path (ignores <base href>).
+  rewritten = rewritten
+    .split('BASE_URL:"/"')
+    .join(`BASE_URL:"${embed}/"`)
+    .split("BASE_URL:'/'")
+    .join(`BASE_URL:'${embed}/'`)
+    .split('return"/"+t')
+    .join(`return"${embed}/"+t`)
+    .split("return'/'+t")
+    .join(`return'${embed}/'+t`);
+
+  // Root-absolute static assets used by WeatherFront (not SPA routes like /data-sources).
+  rewritten = rewritten
+    .split('"/assets/')
+    .join(`"${embed}/assets/`)
+    .split("'/assets/")
+    .join(`'${embed}/assets/`)
+    .split('"/icons/')
+    .join(`"${embed}/icons/`)
+    .split("'/icons/")
+    .join(`'${embed}/icons/`)
+    .split('"/data/')
+    .join(`"${embed}/data/`)
+    .split("'/data/")
+    .join(`'${embed}/data/`)
+    .split('"/overlay/')
+    .join(`"${embed}/overlay/`)
+    .split("'/overlay/")
+    .join(`'${embed}/overlay/`)
+    .split('"/mapbox-logo.svg"')
+    .join(`"${embed}/mapbox-logo.svg"`)
+    .split("'/mapbox-logo.svg'")
+    .join(`'${embed}/mapbox-logo.svg'`)
+    .split('"/favicon.png"')
+    .join(`"${embed}/favicon.png"`)
+    .split("'/favicon.png'")
+    .join(`'${embed}/favicon.png'`);
 
   // Soften strict pathname checks for auth/overlay when served under /weatherfront-embed.
   rewritten = rewritten
@@ -246,6 +288,32 @@ export function isJsonContentType(contentType: string): boolean {
   return contentType.includes("application/json") || contentType.includes("+json");
 }
 
+function isWebSocketUpgrade(request: Request): boolean {
+  return (request.headers.get("Upgrade") || "").toLowerCase() === "websocket";
+}
+
+function buildWebSocketForwardHeaders(
+  request: Request,
+  upstreamHost: string,
+  upstreamOrigin: string,
+): Headers {
+  const headers = new Headers();
+  request.headers.forEach((value, key) => {
+    const lower = key.toLowerCase();
+    if (lower === "host") {
+      return;
+    }
+    if (lower === "origin" || lower === "referer") {
+      return;
+    }
+    headers.set(key, value);
+  });
+  headers.set("Host", upstreamHost);
+  headers.set("Origin", upstreamOrigin);
+  headers.set("Referer", `${upstreamOrigin}/`);
+  return headers;
+}
+
 export async function proxyWeatherfrontUpstream(
   request: Request,
   upstreamOrigin: string,
@@ -278,6 +346,14 @@ export async function proxyWeatherfrontUpstream(
 
   const upstreamUrl = new URL(upstreamPath || "/", fetchOrigin);
   upstreamUrl.search = new URL(request.url).search;
+
+  // WebSocket upgrades must keep Connection/Upgrade/sec-websocket-* headers.
+  if (isWebSocketUpgrade(request)) {
+    const wsHeaders = buildWebSocketForwardHeaders(request, fetchHost, WEATHERFRONT_APP_ORIGIN);
+    return fetch(upstreamUrl.toString(), {
+      headers: wsHeaders,
+    });
+  }
 
   const forwardHeaders = buildForwardHeaders(request, fetchHost, WEATHERFRONT_APP_ORIGIN, {
     cdnMode,

@@ -32,7 +32,13 @@
       "/weatherfront-mapbox",
       "/weatherfront-mapbox/*",
       "/weatherfront-mapbox-tiles",
-      "/weatherfront-mapbox-tiles/*"
+      "/weatherfront-mapbox-tiles/*",
+      "/assets/*",
+      "/icons/*",
+      "/data/*",
+      "/overlay/*",
+      "/favicon.png",
+      "/mapbox-logo.svg"
     ]
   },
   "d1_databases": [

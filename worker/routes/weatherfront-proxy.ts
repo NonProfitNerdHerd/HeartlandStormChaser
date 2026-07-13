@@ -32,8 +32,37 @@ function rewriteRootRelativeUrls(html: string): string {
 function injectProxyBootstrap(html: string): string {
   const bootstrap =
     `<base href="${WEATHERFRONT_EMBED_PREFIX}/">` +
-    '<script src="/js/weatherfront-geolocation-shim.js?v=2"></script>';
+    '<script src="/js/weatherfront-geolocation-shim.js?v=3"></script>';
   return html.replace(/<head(\s[^>]*)?>/i, (match) => `${match}${bootstrap}`);
+}
+
+/** WeatherFront root paths that accidentally resolve outside /weatherfront-embed. */
+export function isWeatherfrontRootAssetPath(pathname: string): boolean {
+  return (
+    pathname.startsWith("/assets/") ||
+    pathname.startsWith("/icons/") ||
+    pathname.startsWith("/data/") ||
+    pathname.startsWith("/overlay/") ||
+    pathname === "/favicon.png" ||
+    pathname === "/mapbox-logo.svg"
+  );
+}
+
+/**
+ * Serve WeatherFront root asset paths (/assets, /icons, /data, …) through the
+ * embed proxy when a client still requests them at the site root.
+ */
+export async function handleWeatherfrontRootAssetFallback(request: Request): Promise<Response | null> {
+  const requestUrl = new URL(request.url);
+  if (!isWeatherfrontRootAssetPath(requestUrl.pathname)) {
+    return null;
+  }
+
+  const rewrittenUrl = new URL(
+    `${WEATHERFRONT_EMBED_PREFIX}${requestUrl.pathname}${requestUrl.search}`,
+    requestUrl.origin,
+  );
+  return handleWeatherfrontEmbed(new Request(rewrittenUrl.toString(), request));
 }
 
 export async function handleWeatherfrontUpstreamRoute(request: Request): Promise<Response | null> {
