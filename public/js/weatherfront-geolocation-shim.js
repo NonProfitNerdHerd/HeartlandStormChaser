@@ -6,6 +6,12 @@
     ["https://cdn.wxfront.com", "/weatherfront-cdn"],
     ["https://static.wxfront.com", "/weatherfront-static"],
     ["https://api.wxfront.com", "/weatherfront-wx-api"],
+    ["https://events.wxfront.com", "/weatherfront-events"],
+    ["https://api.mapbox.com", "/weatherfront-mapbox"],
+    ["https://a.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
+    ["https://b.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
+    ["https://c.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
+    ["https://d.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
   ];
 
   var REFRESH_MS = 5000;
@@ -19,12 +25,9 @@
     for (var i = 0; i < UPSTREAM_REWRITES.length; i++) {
       var from = UPSTREAM_REWRITES[i][0];
       var to = UPSTREAM_REWRITES[i][1];
-      if (url.startsWith(from)) {
+      if (url.indexOf(from) === 0) {
         return to + url.slice(from.length);
       }
-    }
-    if (url.startsWith("https://static.wxfront.com")) {
-      return "/weatherfront-static" + url.slice("https://static.wxfront.com".length);
     }
     return url;
   }
@@ -34,7 +37,7 @@
     if (typeof input === "string") {
       return originalFetch(rewriteRequestUrl(input), init);
     }
-    if (input instanceof Request) {
+    if (typeof Request !== "undefined" && input instanceof Request) {
       var rewritten = rewriteRequestUrl(input.url);
       if (rewritten !== input.url) {
         input = new Request(rewritten, input);
@@ -50,6 +53,24 @@
       args[1] = rewriteRequestUrl(String(url));
       return originalOpen.apply(this, args);
     };
+  }
+
+  // Mapbox GL and other libs create Image/Worker/script URLs directly.
+  try {
+    var desc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
+    if (desc && desc.set) {
+      var originalSrcSet = desc.set;
+      Object.defineProperty(HTMLImageElement.prototype, "src", {
+        configurable: true,
+        enumerable: desc.enumerable,
+        get: desc.get,
+        set: function (value) {
+          originalSrcSet.call(this, rewriteRequestUrl(String(value)));
+        },
+      });
+    }
+  } catch (_error) {
+    /* ignore */
   }
 
   function mphToMps(mph) {
@@ -74,7 +95,7 @@
 
   async function fetchPlatformLocation() {
     try {
-      var response = await fetch("/api/gps/platform", { credentials: "same-origin" });
+      var response = await originalFetch("/api/gps/platform", { credentials: "same-origin" });
       var data = await response.json();
       if (response.ok && data.platform_source && data.platform_source.location) {
         cachedLocation = data.platform_source.location;

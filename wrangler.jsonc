@@ -14,6 +14,8 @@
     "binding": "ASSETS",
     "run_worker_first": [
       "/api/*",
+      "/weatherfront",
+      "/weatherfront/",
       "/auth/callback",
       "/weatherfront-embed",
       "/weatherfront-embed/*",
@@ -24,7 +26,13 @@
       "/weatherfront-static",
       "/weatherfront-static/*",
       "/weatherfront-wx-api",
-      "/weatherfront-wx-api/*"
+      "/weatherfront-wx-api/*",
+      "/weatherfront-events",
+      "/weatherfront-events/*",
+      "/weatherfront-mapbox",
+      "/weatherfront-mapbox/*",
+      "/weatherfront-mapbox-tiles",
+      "/weatherfront-mapbox-tiles/*"
     ]
   },
   "d1_databases": [

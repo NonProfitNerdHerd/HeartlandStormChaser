@@ -23,6 +23,9 @@ const WEATHERFRONT_PROXY_PREFIXES = [
   "/weatherfront-cdn",
   "/weatherfront-static",
   "/weatherfront-wx-api",
+  "/weatherfront-events",
+  "/weatherfront-mapbox",
+  "/weatherfront-mapbox-tiles",
   "/auth/callback",
 ];
 

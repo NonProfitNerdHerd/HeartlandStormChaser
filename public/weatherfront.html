@@ -63,9 +63,8 @@
       </div>
 
       <p class="weatherfront-hint" id="weatherfront-hint">
-        WeatherFront loads directly from app.weatherfront.com. Platform GPS is shown here — use
-        Copy platform coords if WeatherFront asks for a location. Sign in inside WeatherFront for
-        your subscription.
+        WeatherFront is loaded through a same-origin proxy so platform GPS replaces Windows browser
+        location. Radar tiles are proxied via Mapbox/CDN. Sign in inside WeatherFront if prompted.
       </p>
 
       <div class="weatherfront-frame-wrap">
@@ -96,7 +95,7 @@
           <iframe
             id="weatherfront-frame"
             title="WeatherFront"
-            src="https://app.weatherfront.com"
+            src="/weatherfront-embed/"
             allow="geolocation; fullscreen; clipboard-read; clipboard-write"
             referrerpolicy="no-referrer-when-downgrade"
             loading="eager"

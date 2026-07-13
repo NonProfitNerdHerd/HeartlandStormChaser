@@ -6,14 +6,32 @@ export const WEATHERFRONT_UPSTREAM_PREFIXES: Record<string, string> = {
   "/weatherfront-cdn": "https://cdn.wxfront.com",
   "/weatherfront-static": "https://static.wxfront.com",
   "/weatherfront-wx-api": "https://api.wxfront.com",
+  "/weatherfront-events": "https://events.wxfront.com",
+  "/weatherfront-mapbox": "https://api.mapbox.com",
+  "/weatherfront-mapbox-tiles": "https://a.tiles.mapbox.com",
 };
 
+/** Browser-side URL rewrites (longest / most specific first). */
 export const WEATHERFRONT_URL_REWRITES: [string, string][] = [
   ["https://platform.weatherfront.com", "/weatherfront-api"],
   ["https://cdn.wxfront.com", "/weatherfront-cdn"],
   ["https://static.wxfront.com", "/weatherfront-static"],
   ["https://api.wxfront.com", "/weatherfront-wx-api"],
+  ["https://events.wxfront.com", "/weatherfront-events"],
+  ["https://api.mapbox.com", "/weatherfront-mapbox"],
+  ["https://a.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
+  ["https://b.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
+  ["https://c.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
+  ["https://d.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
 ];
+
+const CDN_LIKE_PREFIXES = new Set([
+  "/weatherfront-cdn",
+  "/weatherfront-static",
+  "/weatherfront-mapbox",
+  "/weatherfront-mapbox-tiles",
+  "/weatherfront-events",
+]);
 
 export const HOP_BY_HOP_HEADERS = new Set([
   "connection",
@@ -36,6 +54,19 @@ export const STRIP_RESPONSE_HEADERS = new Set([
   "strict-transport-security",
 ]);
 
+/** Do not forward browser cookies/auth to third-party CDNs. */
+const STRIP_REQUEST_HEADERS_FOR_CDN = new Set([
+  "cookie",
+  "authorization",
+  "x-forwarded-for",
+  "x-real-ip",
+  "cf-connecting-ip",
+  "cf-ray",
+  "cf-visitor",
+  "cf-ipcountry",
+  "true-client-ip",
+]);
+
 export function rewriteWeatherfrontUrls(content: string, requestOrigin?: string): string {
   let rewritten = content;
   for (const [from, to] of WEATHERFRONT_URL_REWRITES) {
@@ -45,6 +76,9 @@ export function rewriteWeatherfrontUrls(content: string, requestOrigin?: string)
   if (requestOrigin) {
     rewritten = rewritten.split('"static.wxfront.com"').join(`"${requestOrigin}/weatherfront-static"`);
     rewritten = rewritten.split("'static.wxfront.com'").join(`'${requestOrigin}/weatherfront-static'`);
+  } else {
+    rewritten = rewritten.split('"static.wxfront.com"').join('"/weatherfront-static"');
+    rewritten = rewritten.split("'static.wxfront.com'").join("'/weatherfront-static'");
   }
 
   rewritten = rewritten
@@ -78,11 +112,21 @@ export function buildForwardHeaders(
   request: Request,
   upstreamHost: string,
   upstreamOrigin: string,
+  options?: { cdnMode?: boolean },
 ): Headers {
   const headers = new Headers();
+  const cdnMode = options?.cdnMode === true;
+
   request.headers.forEach((value, key) => {
     const lower = key.toLowerCase();
     if (HOP_BY_HOP_HEADERS.has(lower)) {
+      return;
+    }
+    if (cdnMode && STRIP_REQUEST_HEADERS_FOR_CDN.has(lower)) {
+      return;
+    }
+    // Avoid leaking our site Origin to upstream; we set WeatherFront's.
+    if (lower === "origin" || lower === "referer") {
       return;
     }
     headers.set(key, value);
@@ -92,11 +136,16 @@ export function buildForwardHeaders(
   headers.set("Origin", upstreamOrigin);
   headers.set("Referer", `${upstreamOrigin}/`);
 
-  if (!headers.has("User-Agent")) {
+  if (!headers.has("User-Agent") || cdnMode) {
     headers.set(
       "User-Agent",
       "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
     );
+  }
+
+  if (cdnMode) {
+    headers.set("Accept", "*/*");
+    headers.set("Accept-Language", "en-US,en;q=0.9");
   }
 
   return headers;
@@ -110,6 +159,12 @@ export function rewriteLocationHeader(
   try {
     const parsed = new URL(location, upstreamOrigin);
     if (parsed.origin !== upstreamOrigin) {
+      // Mapbox / CDN absolute redirects to another known host
+      for (const [from, to] of WEATHERFRONT_URL_REWRITES) {
+        if (parsed.href.startsWith(from)) {
+          return to + parsed.href.slice(from.length);
+        }
+      }
       return location;
     }
     return `${proxyPrefix}${parsed.pathname}${parsed.search}${parsed.hash}`;
@@ -144,6 +199,11 @@ export function buildProxyResponseHeaders(
     headers.set("Content-Type", options.contentType);
   }
 
+  // Allow the embed page (same origin) to use these responses freely.
+  headers.set("Access-Control-Allow-Origin", "*");
+  headers.set("Access-Control-Allow-Methods", "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS");
+  headers.set("Access-Control-Allow-Headers", "*");
+
   return headers;
 }
 
@@ -155,6 +215,10 @@ export function isJavaScriptContentType(contentType: string): boolean {
   );
 }
 
+export function isJsonContentType(contentType: string): boolean {
+  return contentType.includes("application/json") || contentType.includes("+json");
+}
+
 export async function proxyWeatherfrontUpstream(
   request: Request,
   upstreamOrigin: string,
@@ -163,13 +227,45 @@ export async function proxyWeatherfrontUpstream(
 ): Promise<Response> {
   const requestOrigin = new URL(request.url).origin;
   const upstreamHost = new URL(upstreamOrigin).host;
-  const upstreamUrl = new URL(upstreamPath, upstreamOrigin);
-  upstreamUrl.search = new URL(request.url).search;
   const method = request.method.toUpperCase();
+  const cdnMode = CDN_LIKE_PREFIXES.has(proxyPrefix);
+
+  if (method === "OPTIONS") {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET,HEAD,POST,PUT,PATCH,DELETE,OPTIONS",
+        "Access-Control-Allow-Headers": "*",
+        "Access-Control-Max-Age": "86400",
+      },
+    });
+  }
+
+  // Mapbox tile hosts use a/b/c/d — always fetch via a.tiles; path is the same.
+  let fetchOrigin = upstreamOrigin;
+  let fetchHost = upstreamHost;
+  if (proxyPrefix === "/weatherfront-mapbox-tiles") {
+    fetchOrigin = "https://a.tiles.mapbox.com";
+    fetchHost = "a.tiles.mapbox.com";
+  }
+
+  const upstreamUrl = new URL(upstreamPath || "/", fetchOrigin);
+  upstreamUrl.search = new URL(request.url).search;
+
+  const forwardHeaders = buildForwardHeaders(request, fetchHost, WEATHERFRONT_APP_ORIGIN, {
+    cdnMode,
+  });
+
+  // Mapbox token URL restrictions check Referer against allowed URLs.
+  if (proxyPrefix === "/weatherfront-mapbox" || proxyPrefix === "/weatherfront-mapbox-tiles") {
+    forwardHeaders.set("Referer", `${WEATHERFRONT_APP_ORIGIN}/`);
+    forwardHeaders.set("Origin", WEATHERFRONT_APP_ORIGIN);
+  }
 
   const upstreamResponse = await fetch(upstreamUrl.toString(), {
     method,
-    headers: buildForwardHeaders(request, upstreamHost, upstreamOrigin),
+    headers: forwardHeaders,
     body: method === "GET" || method === "HEAD" ? undefined : request.body,
     redirect: "manual",
   });
@@ -177,15 +273,13 @@ export async function proxyWeatherfrontUpstream(
   if (upstreamResponse.status >= 300 && upstreamResponse.status < 400) {
     const location = upstreamResponse.headers.get("Location");
     if (location) {
-      return Response.redirect(
-        rewriteLocationHeader(location, upstreamOrigin, proxyPrefix),
-        upstreamResponse.status,
-      );
+      const rewritten = rewriteLocationHeader(location, fetchOrigin, proxyPrefix);
+      return Response.redirect(rewritten, upstreamResponse.status);
     }
   }
 
   const contentType = upstreamResponse.headers.get("Content-Type") ?? "";
-  if (isJavaScriptContentType(contentType)) {
+  if (isJavaScriptContentType(contentType) || isJsonContentType(contentType)) {
     const body = rewriteWeatherfrontUrls(await upstreamResponse.text(), requestOrigin);
     return new Response(body, {
       status: upstreamResponse.status,
@@ -196,7 +290,7 @@ export async function proxyWeatherfrontUpstream(
   return new Response(upstreamResponse.body, {
     status: upstreamResponse.status,
     headers: buildProxyResponseHeaders(upstreamResponse, {
-      locationRewrite: { upstreamOrigin, proxyPrefix },
+      locationRewrite: { upstreamOrigin: fetchOrigin, proxyPrefix },
     }),
   });
 }

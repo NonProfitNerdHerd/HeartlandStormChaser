@@ -1,8 +1,8 @@
 (function () {
   var REFRESH_INTERVAL_MS = 10000;
-  var LOAD_TIMEOUT_MS = 25000;
+  var LOAD_TIMEOUT_MS = 45000;
   var SCALE_STORAGE_KEY = "weatherfront-scale";
-  var WEATHERFRONT_URL = "https://app.weatherfront.com";
+  var WEATHERFRONT_URL = "/weatherfront-embed/";
   var IS_DEV =
     window.location.hostname === "localhost" ||
     window.location.hostname === "127.0.0.1" ||
@@ -116,13 +116,13 @@
     loadTimer = setTimeout(function () {
       if (frameLoaded) return;
       showError(
-        "WeatherFront did not finish loading. It may be blocked from embedding, or the network request failed.",
+        "WeatherFront did not finish loading through the proxy. Try Retry, or open WeatherFront in a new tab.",
         [
-          "mode=direct-iframe",
+          "mode=same-origin-proxy",
           "src=" + WEATHERFRONT_URL,
           "timeout_ms=" + LOAD_TIMEOUT_MS,
-          "note=Cross-origin iframe; parent cannot read WF DOM, Mapbox, or cookies.",
-          "note=Previous reverse-proxy mode broke Mapbox tiles (token/origin) and login assets.",
+          "note=Embed injects platform GPS geolocation shim.",
+          "note=Mapbox/CDN requests are rewritten through Worker proxies.",
         ].join("\n"),
       );
     }, LOAD_TIMEOUT_MS);
@@ -132,7 +132,7 @@
     if (!frame) return;
     hideError();
     armLoadWatch();
-    frame.src = WEATHERFRONT_URL + (WEATHERFRONT_URL.indexOf("?") >= 0 ? "&" : "?") + "_=" + Date.now();
+    frame.src = WEATHERFRONT_URL + "?_=" + Date.now();
   }
 
   function renderPlatformStatus(data) {
@@ -168,7 +168,7 @@
       " · " +
       latestCoordsText +
       (location.speed_mph != null ? " · " + formatNumber(location.speed_mph, 1) + " mph" : "") +
-      " · platform GPS active";
+      " · fed into WeatherFront";
 
     setCopyEnabled(true);
   }
@@ -215,7 +215,7 @@
       clearLoadTimer();
       showError(
         "The browser reported an error loading WeatherFront.",
-        "mode=direct-iframe\nsrc=" + WEATHERFRONT_URL + "\nevent=iframe.error",
+        "mode=same-origin-proxy\nsrc=" + WEATHERFRONT_URL + "\nevent=iframe.error",
       );
     });
     armLoadWatch();

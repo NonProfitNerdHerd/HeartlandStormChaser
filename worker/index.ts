@@ -92,6 +92,10 @@ export default {
       return handleBroadcast(request, env);
     }
 
+    if (url.pathname === "/weatherfront" || url.pathname === "/weatherfront/") {
+      return env.ASSETS.fetch(new URL("/weatherfront.html", request.url));
+    }
+
     if (url.pathname === "/auth/callback") {
       return handleWeatherfrontAuthCallback(request);
     }
