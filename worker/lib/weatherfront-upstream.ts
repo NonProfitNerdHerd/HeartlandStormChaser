@@ -56,6 +56,13 @@ export const STRIP_RESPONSE_HEADERS = new Set([
   "content-security-policy-report-only",
   "x-frame-options",
   "strict-transport-security",
+  // WeatherFront HTML/JS is published with long s-maxage; that caches broken proxy
+  // rewrites in browsers/CDNs. Always set our own cache policy below when needed.
+  "cache-control",
+  "expires",
+  "etag",
+  "last-modified",
+  "age",
 ]);
 
 const STRIP_REQUEST_HEADERS_FOR_CDN = new Set([
@@ -184,6 +191,8 @@ export function buildProxyResponseHeaders(
   options?: {
     contentType?: string;
     locationRewrite?: { upstreamOrigin: string; proxyPrefix: string; requestOrigin?: string };
+    /** Force browsers not to reuse a previous broken proxy rewrite. */
+    noStore?: boolean;
   },
 ): Headers {
   const headers = new Headers();
@@ -211,6 +220,11 @@ export function buildProxyResponseHeaders(
 
   if (options?.contentType) {
     headers.set("Content-Type", options.contentType);
+  }
+
+  if (options?.noStore) {
+    headers.set("Cache-Control", "no-store, no-cache, must-revalidate");
+    headers.set("Pragma", "no-cache");
   }
 
   headers.set("Access-Control-Allow-Origin", "*");
@@ -294,7 +308,10 @@ export async function proxyWeatherfrontUpstream(
     const body = rewriteWeatherfrontUrls(await upstreamResponse.text(), requestOrigin);
     return new Response(body, {
       status: upstreamResponse.status,
-      headers: buildProxyResponseHeaders(upstreamResponse, { contentType }),
+      headers: buildProxyResponseHeaders(upstreamResponse, {
+        contentType,
+        noStore: true,
+      }),
     });
   }
 
@@ -306,6 +323,8 @@ export async function proxyWeatherfrontUpstream(
         proxyPrefix,
         requestOrigin,
       },
+      // Allow short caching of tiles/binaries; HTML/JS handled above with noStore.
+      noStore: false,
     }),
   });
 }

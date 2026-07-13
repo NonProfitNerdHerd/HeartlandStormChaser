@@ -32,7 +32,7 @@ function rewriteRootRelativeUrls(html: string): string {
 function injectProxyBootstrap(html: string): string {
   const bootstrap =
     `<base href="${WEATHERFRONT_EMBED_PREFIX}/">` +
-    '<script src="/js/weatherfront-geolocation-shim.js"></script>';
+    '<script src="/js/weatherfront-geolocation-shim.js?v=2"></script>';
   return html.replace(/<head(\s[^>]*)?>/i, (match) => `${match}${bootstrap}`);
 }
 
@@ -73,11 +73,20 @@ export async function handleWeatherfrontEmbed(request: Request): Promise<Respons
   if (contentType.includes("text/html")) {
     let html = await upstreamResponse.text();
     html = rewriteRootRelativeUrls(html);
+    // Proxy Mapbox CSS through our Worker so the embed does not depend on
+    // cross-origin stylesheet loads from api.mapbox.com.
+    html = html.replace(
+      /https:\/\/api\.mapbox\.com\//g,
+      `${requestOrigin}/weatherfront-mapbox/`,
+    );
     html = injectProxyBootstrap(html);
 
     return new Response(html, {
       status: upstreamResponse.status,
-      headers: buildProxyResponseHeaders(upstreamResponse, { contentType: "text/html; charset=UTF-8" }),
+      headers: buildProxyResponseHeaders(upstreamResponse, {
+        contentType: "text/html; charset=UTF-8",
+        noStore: true,
+      }),
     });
   }
 
@@ -85,7 +94,10 @@ export async function handleWeatherfrontEmbed(request: Request): Promise<Respons
     const body = rewriteWeatherfrontUrls(await upstreamResponse.text(), requestOrigin);
     return new Response(body, {
       status: upstreamResponse.status,
-      headers: buildProxyResponseHeaders(upstreamResponse, { contentType }),
+      headers: buildProxyResponseHeaders(upstreamResponse, {
+        contentType,
+        noStore: true,
+      }),
     });
   }
 
@@ -127,10 +139,17 @@ export async function handleWeatherfrontAuthCallback(request: Request): Promise<
 
   let html = await upstreamResponse.text();
   html = rewriteRootRelativeUrls(html);
+  html = html.replace(
+    /https:\/\/api\.mapbox\.com\//g,
+    `${requestOrigin}/weatherfront-mapbox/`,
+  );
   html = injectProxyBootstrap(html);
 
   return new Response(html, {
     status: upstreamResponse.status,
-    headers: buildProxyResponseHeaders(upstreamResponse, { contentType: "text/html; charset=UTF-8" }),
+    headers: buildProxyResponseHeaders(upstreamResponse, {
+      contentType: "text/html; charset=UTF-8",
+      noStore: true,
+    }),
   });
 }
