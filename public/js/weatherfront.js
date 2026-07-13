@@ -2,8 +2,9 @@
   var REFRESH_INTERVAL_MS = 10000;
   var SCALE_STORAGE_KEY = "weatherfront-scale";
   var WEATHERFRONT_URL = "/weatherfront-embed/";
+  var VALID_SCALES = { "90": true, "100": true, "110": true, "125": true };
 
-  var scaleSelect = document.getElementById("scale-select");
+  var scaleButtons = document.querySelectorAll(".weatherfront-scale__btn");
   var gpsStatusBadge = document.getElementById("gps-status-badge");
   var gpsCoords = document.getElementById("gps-coords");
   var frameScaler = document.getElementById("frame-scaler");
@@ -40,19 +41,22 @@
   }
 
   function setScale(percent) {
-    var scale = Number(percent) / 100;
-    frameScaler.style.setProperty("--wf-scale", String(scale));
-    localStorage.setItem(SCALE_STORAGE_KEY, String(percent));
+    var value = String(percent);
+    if (!VALID_SCALES[value]) value = "100";
+
+    frameScaler.style.setProperty("--wf-scale", String(Number(value) / 100));
+    localStorage.setItem(SCALE_STORAGE_KEY, value);
+
+    scaleButtons.forEach(function (button) {
+      var active = button.getAttribute("data-scale") === value;
+      button.classList.toggle("is-active", active);
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+    });
   }
 
   function loadScalePreference() {
     var stored = localStorage.getItem(SCALE_STORAGE_KEY) || "100";
-    if (scaleSelect.querySelector('option[value="' + stored + '"]')) {
-      scaleSelect.value = stored;
-    } else {
-      scaleSelect.value = "100";
-    }
-    setScale(scaleSelect.value);
+    setScale(stored);
   }
 
   function hideError() {
@@ -130,8 +134,10 @@
     pollTimer = setInterval(refreshPlatformGps, REFRESH_INTERVAL_MS);
   }
 
-  scaleSelect.addEventListener("change", function () {
-    setScale(scaleSelect.value);
+  scaleButtons.forEach(function (button) {
+    button.addEventListener("click", function () {
+      setScale(button.getAttribute("data-scale"));
+    });
   });
 
   if (retryBtn) {
