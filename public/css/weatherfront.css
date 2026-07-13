@@ -22,7 +22,7 @@
 
 .weatherfront-scale {
   position: absolute;
-  top: 0.75rem;
+  top: 3.25rem;
   right: 0.75rem;
   z-index: 3;
   display: flex;
@@ -97,6 +97,13 @@
   border-color: var(--color-accent, #3b82f6);
   background: rgba(37, 99, 235, 0.88);
   color: #fff;
+}
+
+.weatherfront-scale__btn--reload {
+  margin-top: 0.15rem;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.02em;
 }
 
 .weatherfront-frame-scaler {

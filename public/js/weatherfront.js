@@ -3,13 +3,14 @@
   var WEATHERFRONT_URL = "/weatherfront-embed/";
   var VALID_SCALES = { "90": true, "100": true, "110": true, "125": true };
 
-  var scaleButtons = document.querySelectorAll(".weatherfront-scale__btn");
+  var scaleButtons = document.querySelectorAll(".weatherfront-scale__btn[data-scale]");
   var iframeGpsBug = document.getElementById("iframe-gps-bug");
   var frameScaler = document.getElementById("frame-scaler");
   var frame = document.getElementById("weatherfront-frame");
   var errorEl = document.getElementById("weatherfront-error");
   var errorDetail = document.getElementById("weatherfront-error-detail");
   var retryBtn = document.getElementById("weatherfront-retry-btn");
+  var reloadBtn = document.getElementById("weatherfront-reload-btn");
 
   function setIframeGpsBug(captured) {
     if (!iframeGpsBug) return;
@@ -84,6 +85,10 @@
 
   if (retryBtn) {
     retryBtn.addEventListener("click", reloadFrame);
+  }
+
+  if (reloadBtn) {
+    reloadBtn.addEventListener("click", reloadFrame);
   }
 
   if (frame) {
