@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <meta
       name="description"
-      content="WeatherFront radar and models embedded with platform GPS for HeartlandStormChaser"
+      content="WeatherFront radar and models embedded for HeartlandStormChaser"
     />
     <title>WeatherFront · HeartlandStormChaser</title>
     <link rel="stylesheet" href="/css/base.css" />
@@ -50,7 +50,7 @@
         <a
           class="btn btn--secondary"
           id="weatherfront-open-external"
-          href="https://app.weatherfront.com"
+          href="https://app.weatherfront.com/"
           target="_blank"
           rel="noopener noreferrer"
           >Open WeatherFront</a
@@ -63,9 +63,9 @@
       </div>
 
       <p class="weatherfront-hint" id="weatherfront-hint">
-        WeatherFront is loaded through a same-origin proxy so platform GPS replaces Windows browser
-        location. Radar tiles and app assets are rewritten under /weatherfront-embed. Sign in inside
-        WeatherFront if prompted. (proxy build 2026-07-12c)
+        Showing WeatherFront directly in this page (scale + platform GPS status). Platform GPS is not
+        injected into the iframe yet — that needs the same-origin proxy next. (direct iframe
+        2026-07-12d)
       </p>
 
       <div class="weatherfront-frame-wrap">
@@ -83,20 +83,19 @@
             </button>
             <a
               class="btn btn--secondary"
-              href="https://app.weatherfront.com"
+              href="https://app.weatherfront.com/"
               target="_blank"
               rel="noopener noreferrer"
               >Open in new tab</a
             >
           </p>
-          <pre class="weatherfront-error__diag" id="weatherfront-error-diag" hidden></pre>
         </div>
 
         <div class="weatherfront-frame-scaler" id="frame-scaler">
           <iframe
             id="weatherfront-frame"
             title="WeatherFront"
-            src="about:blank"
+            src="https://app.weatherfront.com/"
             allow="geolocation; fullscreen; clipboard-read; clipboard-write"
             referrerpolicy="no-referrer-when-downgrade"
             loading="eager"

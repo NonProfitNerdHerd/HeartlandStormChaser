@@ -1,12 +1,7 @@
 (function () {
   var REFRESH_INTERVAL_MS = 10000;
-  var LOAD_TIMEOUT_MS = 45000;
   var SCALE_STORAGE_KEY = "weatherfront-scale";
-  var WEATHERFRONT_URL = "/weatherfront-embed/";
-  var IS_DEV =
-    window.location.hostname === "localhost" ||
-    window.location.hostname === "127.0.0.1" ||
-    (window.location.hostname || "").includes("workers.dev");
+  var WEATHERFRONT_URL = "https://app.weatherfront.com/";
 
   var scaleSelect = document.getElementById("scale-select");
   var copyGpsBtn = document.getElementById("copy-gps-btn");
@@ -16,13 +11,10 @@
   var frame = document.getElementById("weatherfront-frame");
   var errorEl = document.getElementById("weatherfront-error");
   var errorDetail = document.getElementById("weatherfront-error-detail");
-  var errorDiag = document.getElementById("weatherfront-error-diag");
   var retryBtn = document.getElementById("weatherfront-retry-btn");
 
   var pollTimer = null;
-  var loadTimer = null;
   var latestCoordsText = null;
-  var frameLoaded = false;
 
   function statusBadgeClass(status) {
     if (status === "LIVE") return "badge badge--success";
@@ -85,59 +77,18 @@
     if (frameScaler) frameScaler.hidden = false;
   }
 
-  function showError(message, diagnostic) {
+  function showError(message) {
     if (!errorEl) return;
-    frameLoaded = false;
+    // Keep the iframe visible behind/under the message only if needed —
+    // for a blocked embed, hide the empty frame.
     if (frameScaler) frameScaler.hidden = true;
     errorEl.hidden = false;
     if (errorDetail) errorDetail.textContent = message;
-    if (errorDiag) {
-      if (IS_DEV && diagnostic) {
-        errorDiag.hidden = false;
-        errorDiag.textContent = diagnostic;
-      } else {
-        errorDiag.hidden = true;
-        errorDiag.textContent = "";
-      }
-    }
-  }
-
-  function clearLoadTimer() {
-    if (loadTimer) {
-      clearTimeout(loadTimer);
-      loadTimer = null;
-    }
-  }
-
-  function armLoadWatch() {
-    clearLoadTimer();
-    frameLoaded = false;
-    hideError();
-    loadTimer = setTimeout(function () {
-      if (frameLoaded) return;
-      showError(
-        "WeatherFront did not finish loading through the proxy. Try Retry, or open WeatherFront in a new tab.",
-        [
-          "mode=same-origin-proxy",
-          "src=" + WEATHERFRONT_URL,
-          "timeout_ms=" + LOAD_TIMEOUT_MS,
-          "note=Embed injects platform GPS geolocation shim.",
-          "note=Mapbox/CDN requests are rewritten through Worker proxies.",
-        ].join("\n"),
-      );
-    }, LOAD_TIMEOUT_MS);
-  }
-
-  function markFrameLoaded() {
-    frameLoaded = true;
-    clearLoadTimer();
-    hideError();
   }
 
   function reloadFrame() {
     if (!frame) return;
     hideError();
-    armLoadWatch();
     frame.src = WEATHERFRONT_URL + "?_=" + Date.now();
   }
 
@@ -174,7 +125,7 @@
       " · " +
       latestCoordsText +
       (location.speed_mph != null ? " · " + formatNumber(location.speed_mph, 1) + " mph" : "") +
-      " · fed into WeatherFront";
+      " · platform GPS (not injected into iframe yet)";
 
     setCopyEnabled(true);
   }
@@ -212,28 +163,12 @@
   }
 
   if (frame) {
-    frame.addEventListener("load", function () {
-      // Ignore the initial about:blank document; only accept the embed URL.
-      try {
-        var href = frame.contentWindow && frame.contentWindow.location.href;
-        if (!href || href === "about:blank") return;
-      } catch (_error) {
-        /* cross-origin — treat as loaded */
-      }
-      markFrameLoaded();
-    });
+    hideError();
     frame.addEventListener("error", function () {
-      clearLoadTimer();
       showError(
-        "The browser reported an error loading WeatherFront.",
-        "mode=same-origin-proxy\nsrc=" + WEATHERFRONT_URL + "\nevent=iframe.error",
+        "The browser could not load https://app.weatherfront.com/ in this iframe. Try Retry or open it in a new tab.",
       );
     });
-
-    // Start at about:blank in HTML, then navigate after listeners are attached so a
-    // cached embed cannot miss the load event and falsely trip the timeout overlay.
-    armLoadWatch();
-    frame.src = WEATHERFRONT_URL + "?_=" + Date.now();
   }
 
   loadScalePreference();
