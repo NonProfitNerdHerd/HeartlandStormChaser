@@ -72,15 +72,6 @@
   font: inherit;
 }
 
-.weatherfront-hint {
-  margin: 0;
-  padding: 0.5rem 1.25rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-elevated);
-  color: var(--color-text-muted);
-  font-size: 0.875rem;
-}
-
 .weatherfront-frame-wrap {
   position: relative;
   flex: 1;
