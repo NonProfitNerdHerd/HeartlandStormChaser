@@ -97,6 +97,10 @@ export default {
       return env.ASSETS.fetch(new URL("/weatherfront.html", request.url));
     }
 
+    if (url.pathname === "/weatherfront-model" || url.pathname === "/weatherfront-model/") {
+      return env.ASSETS.fetch(new URL("/weatherfront-model.html", request.url));
+    }
+
     if (url.pathname === "/auth/callback") {
       return handleWeatherfrontAuthCallback(request);
     }

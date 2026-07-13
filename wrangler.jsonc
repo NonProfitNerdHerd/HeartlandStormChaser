@@ -16,6 +16,8 @@
       "/api/*",
       "/weatherfront",
       "/weatherfront/",
+      "/weatherfront-model",
+      "/weatherfront-model/",
       "/auth/callback",
       "/weatherfront-embed",
       "/weatherfront-embed/*",
