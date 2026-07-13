@@ -5,6 +5,7 @@
   var VALID_SCALES = { "90": true, "100": true, "110": true, "125": true };
 
   var scaleButtons = document.querySelectorAll(".weatherfront-scale__btn");
+  var iframeGpsBug = document.getElementById("iframe-gps-bug");
   var gpsStatusBadge = document.getElementById("gps-status-badge");
   var gpsCoords = document.getElementById("gps-coords");
   var frameScaler = document.getElementById("frame-scaler");
@@ -14,6 +15,25 @@
   var retryBtn = document.getElementById("weatherfront-retry-btn");
 
   var pollTimer = null;
+
+  function setIframeGpsBug(captured) {
+    if (!iframeGpsBug) return;
+    if (captured === true) {
+      iframeGpsBug.dataset.state = "ok";
+      iframeGpsBug.textContent = "GPS";
+      iframeGpsBug.title = "Iframe captured platform GPS";
+      return;
+    }
+    if (captured === false) {
+      iframeGpsBug.dataset.state = "miss";
+      iframeGpsBug.textContent = "GPS";
+      iframeGpsBug.title = "Iframe did not capture platform GPS";
+      return;
+    }
+    iframeGpsBug.dataset.state = "unknown";
+    iframeGpsBug.textContent = "GPS?";
+    iframeGpsBug.title = "Waiting for iframe GPS capture status";
+  }
 
   function statusBadgeClass(status) {
     if (status === "LIVE") return "badge badge--success";
@@ -78,6 +98,7 @@
   function reloadFrame() {
     if (!frame) return;
     hideError();
+    setIframeGpsBug(null);
     frame.src = WEATHERFRONT_URL + "?_=" + Date.now();
   }
 
@@ -140,13 +161,23 @@
     });
   });
 
+  window.addEventListener("message", function (event) {
+    if (event.origin !== window.location.origin) return;
+    var data = event.data;
+    if (!data || data.source !== "weatherfront-geolocation-shim") return;
+    if (data.type !== "gps-capture") return;
+    setIframeGpsBug(Boolean(data.captured));
+  });
+
   if (retryBtn) {
     retryBtn.addEventListener("click", reloadFrame);
   }
 
   if (frame) {
     hideError();
+    setIframeGpsBug(null);
     frame.addEventListener("error", function () {
+      setIframeGpsBug(false);
       showError(
         "The browser could not load the WeatherFront proxy embed. Try Retry, or open WeatherFront in a new tab.",
       );

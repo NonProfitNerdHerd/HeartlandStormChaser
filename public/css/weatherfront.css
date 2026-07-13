@@ -50,8 +50,47 @@
   z-index: 3;
   display: flex;
   flex-direction: column;
+  align-items: stretch;
   gap: 0.45rem;
   pointer-events: none;
+}
+
+.weatherfront-gps-bug {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.0625rem;
+  min-height: 1.75rem;
+  padding: 0.45rem 0.55rem;
+  border: 1px solid rgba(255, 255, 255, 0.22);
+  border-radius: 0.4rem;
+  background: rgba(12, 14, 18, 0.78);
+  color: #f3f4f6;
+  font-size: 0.8125rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  line-height: 1;
+  text-align: center;
+  backdrop-filter: blur(6px);
+  user-select: none;
+}
+
+.weatherfront-gps-bug[data-state="ok"] {
+  border-color: rgba(34, 197, 94, 0.7);
+  background: rgba(22, 163, 74, 0.9);
+  color: #fff;
+}
+
+.weatherfront-gps-bug[data-state="miss"] {
+  border-color: rgba(239, 68, 68, 0.7);
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+}
+
+.weatherfront-gps-bug[data-state="unknown"] {
+  border-color: rgba(156, 163, 175, 0.45);
+  background: rgba(55, 65, 81, 0.85);
+  color: #e5e7eb;
 }
 
 .weatherfront-scale__btn {

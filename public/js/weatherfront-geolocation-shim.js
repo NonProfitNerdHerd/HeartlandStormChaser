@@ -28,6 +28,30 @@
   var watches = new Map();
   var watchSeq = 1;
   var pollTimer = null;
+  var lastCaptureReported = null;
+
+  function reportGpsCapture(captured, detail) {
+    var next = captured ? true : false;
+    if (lastCaptureReported === next && detail == null) {
+      return;
+    }
+    lastCaptureReported = next;
+    try {
+      if (window.parent && window.parent !== window) {
+        window.parent.postMessage(
+          {
+            source: "weatherfront-geolocation-shim",
+            type: "gps-capture",
+            captured: next,
+            detail: detail || null,
+          },
+          origin,
+        );
+      }
+    } catch (_error) {
+      /* ignore */
+    }
+  }
 
   function rewriteRootAssetPath(url) {
     if (typeof url !== "string" || url.length === 0) return url;
@@ -154,11 +178,13 @@
       var data = await response.json();
       if (response.ok && data.platform_source && data.platform_source.location) {
         cachedLocation = data.platform_source.location;
+        reportGpsCapture(true);
         return cachedLocation;
       }
     } catch (_error) {
       /* fall through */
     }
+    reportGpsCapture(false, "platform-unavailable");
     return null;
   }
 
@@ -193,9 +219,11 @@
   navigator.geolocation.getCurrentPosition = function (success, error) {
     fetchPlatformLocation().then(function (location) {
       if (location) {
+        reportGpsCapture(true, "getCurrentPosition");
         success(platformToPosition(location));
         return;
       }
+      reportGpsCapture(false, "getCurrentPosition-failed");
       if (error) {
         error({
           code: 2,
@@ -215,9 +243,11 @@
 
     fetchPlatformLocation().then(function (location) {
       if (location) {
+        reportGpsCapture(true, "watchPosition");
         success(platformToPosition(location));
         return;
       }
+      reportGpsCapture(false, "watchPosition-failed");
       if (error) {
         error({
           code: 2,

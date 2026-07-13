@@ -32,7 +32,7 @@ function rewriteRootRelativeUrls(html: string): string {
 function injectProxyBootstrap(html: string): string {
   const bootstrap =
     `<base href="${WEATHERFRONT_EMBED_PREFIX}/">` +
-    '<script src="/js/weatherfront-geolocation-shim.js?v=4"></script>';
+    '<script src="/js/weatherfront-geolocation-shim.js?v=5"></script>';
   return html.replace(/<head(\s[^>]*)?>/i, (match) => `${match}${bootstrap}`);
 }
 
