@@ -128,6 +128,12 @@
     }, LOAD_TIMEOUT_MS);
   }
 
+  function markFrameLoaded() {
+    frameLoaded = true;
+    clearLoadTimer();
+    hideError();
+  }
+
   function reloadFrame() {
     if (!frame) return;
     hideError();
@@ -207,9 +213,14 @@
 
   if (frame) {
     frame.addEventListener("load", function () {
-      frameLoaded = true;
-      clearLoadTimer();
-      hideError();
+      // Ignore the initial about:blank document; only accept the embed URL.
+      try {
+        var href = frame.contentWindow && frame.contentWindow.location.href;
+        if (!href || href === "about:blank") return;
+      } catch (_error) {
+        /* cross-origin — treat as loaded */
+      }
+      markFrameLoaded();
     });
     frame.addEventListener("error", function () {
       clearLoadTimer();
@@ -218,7 +229,11 @@
         "mode=same-origin-proxy\nsrc=" + WEATHERFRONT_URL + "\nevent=iframe.error",
       );
     });
+
+    // Start at about:blank in HTML, then navigate after listeners are attached so a
+    // cached embed cannot miss the load event and falsely trip the timeout overlay.
     armLoadWatch();
+    frame.src = WEATHERFRONT_URL + "?_=" + Date.now();
   }
 
   loadScalePreference();
