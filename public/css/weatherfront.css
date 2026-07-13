@@ -12,29 +12,6 @@
   padding: 0;
 }
 
-.weatherfront-controls {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-  padding: 0.5rem 1.25rem;
-  border-bottom: 1px solid var(--color-border);
-  background: var(--color-bg-card);
-}
-
-.weatherfront-controls__status {
-  display: flex;
-  flex-wrap: wrap;
-  align-items: center;
-  gap: 0.75rem;
-}
-
-.weatherfront-controls__coords {
-  font-family: var(--font-mono);
-  font-size: 0.8125rem;
-  color: var(--color-text-muted);
-}
-
 .weatherfront-frame-wrap {
   position: relative;
   flex: 1;
