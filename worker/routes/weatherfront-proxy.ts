@@ -17,20 +17,16 @@ function buildEmbedUpstreamUrl(requestUrl: URL): URL {
   return upstream;
 }
 
+/**
+ * Keep root-relative asset URLs working under <base href="/weatherfront-embed/">.
+ * Do not rewrite inline JavaScript — previous quote-breaking rewrites caused SyntaxError.
+ */
 function rewriteRootRelativeUrls(html: string): string {
   return html
     .replace(/(\s(?:src|href)=["'])\/assets\//gi, `$1assets/`)
     .replace(/(\s(?:src|href)=["'])\/favicon\.png/gi, `$1favicon.png`)
-    .replace(/(\s(?:src|href)=["'])\/overlay\//gi, `$1overlay/`);
-}
-
-function rewriteInlinePathChecks(html: string): string {
-  return html
-    .replace(
-      /window\.location\.pathname\.startsWith\(['"]\/overlay\/storm-chaser\//g,
-      'window.location.pathname.includes("/overlay/storm-chaser/',
-    )
-    .replace(/startsWith\(['"]\/overlay\/storm-chaser\//g, 'includes("/overlay/storm-chaser/');
+    .replace(/(\s(?:src|href)=["'])\/overlay\//gi, `$1overlay/`)
+    .replace(/(\s(?:src|href)=["'])\/mapbox-logo\.svg/gi, `$1mapbox-logo.svg`);
 }
 
 function injectProxyBootstrap(html: string): string {
@@ -53,6 +49,7 @@ export async function handleWeatherfrontEmbed(request: Request): Promise<Respons
   const requestUrl = new URL(request.url);
   const upstreamUrl = buildEmbedUpstreamUrl(requestUrl);
   const method = request.method.toUpperCase();
+  const requestOrigin = requestUrl.origin;
 
   const upstreamResponse = await fetch(upstreamUrl.toString(), {
     method,
@@ -65,19 +62,17 @@ export async function handleWeatherfrontEmbed(request: Request): Promise<Respons
     const location = upstreamResponse.headers.get("Location");
     if (location) {
       return Response.redirect(
-        rewriteLocationHeader(location, WEATHERFRONT_APP_ORIGIN, WEATHERFRONT_EMBED_PREFIX),
+        rewriteLocationHeader(location, WEATHERFRONT_APP_ORIGIN, WEATHERFRONT_EMBED_PREFIX, requestOrigin),
         upstreamResponse.status,
       );
     }
   }
 
   const contentType = upstreamResponse.headers.get("Content-Type") ?? "";
-  const requestOrigin = requestUrl.origin;
 
   if (contentType.includes("text/html")) {
     let html = await upstreamResponse.text();
     html = rewriteRootRelativeUrls(html);
-    html = rewriteInlinePathChecks(html);
     html = injectProxyBootstrap(html);
 
     return new Response(html, {
@@ -97,7 +92,11 @@ export async function handleWeatherfrontEmbed(request: Request): Promise<Respons
   return new Response(upstreamResponse.body, {
     status: upstreamResponse.status,
     headers: buildProxyResponseHeaders(upstreamResponse, {
-      locationRewrite: { upstreamOrigin: WEATHERFRONT_APP_ORIGIN, proxyPrefix: WEATHERFRONT_EMBED_PREFIX },
+      locationRewrite: {
+        upstreamOrigin: WEATHERFRONT_APP_ORIGIN,
+        proxyPrefix: WEATHERFRONT_EMBED_PREFIX,
+        requestOrigin,
+      },
     }),
   });
 }
@@ -107,6 +106,7 @@ export async function handleWeatherfrontAuthCallback(request: Request): Promise<
   const upstreamUrl = new URL("/auth/callback", WEATHERFRONT_APP_ORIGIN);
   upstreamUrl.search = requestUrl.search;
   const method = request.method.toUpperCase();
+  const requestOrigin = requestUrl.origin;
 
   const upstreamResponse = await fetch(upstreamUrl.toString(), {
     method,
@@ -119,7 +119,7 @@ export async function handleWeatherfrontAuthCallback(request: Request): Promise<
     const location = upstreamResponse.headers.get("Location");
     if (location) {
       return Response.redirect(
-        rewriteLocationHeader(location, WEATHERFRONT_APP_ORIGIN, WEATHERFRONT_EMBED_PREFIX),
+        rewriteLocationHeader(location, WEATHERFRONT_APP_ORIGIN, WEATHERFRONT_EMBED_PREFIX, requestOrigin),
         upstreamResponse.status,
       );
     }
@@ -127,7 +127,6 @@ export async function handleWeatherfrontAuthCallback(request: Request): Promise<
 
   let html = await upstreamResponse.text();
   html = rewriteRootRelativeUrls(html);
-  html = rewriteInlinePathChecks(html);
   html = injectProxyBootstrap(html);
 
   return new Response(html, {

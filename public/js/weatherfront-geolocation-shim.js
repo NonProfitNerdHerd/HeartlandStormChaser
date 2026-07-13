@@ -1,17 +1,19 @@
 (function () {
   "use strict";
 
+  var origin = window.location.origin;
+
   var UPSTREAM_REWRITES = [
-    ["https://platform.weatherfront.com", "/weatherfront-api"],
-    ["https://cdn.wxfront.com", "/weatherfront-cdn"],
-    ["https://static.wxfront.com", "/weatherfront-static"],
-    ["https://api.wxfront.com", "/weatherfront-wx-api"],
-    ["https://events.wxfront.com", "/weatherfront-events"],
-    ["https://api.mapbox.com", "/weatherfront-mapbox"],
-    ["https://a.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
-    ["https://b.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
-    ["https://c.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
-    ["https://d.tiles.mapbox.com", "/weatherfront-mapbox-tiles"],
+    ["https://platform.weatherfront.com", origin + "/weatherfront-api"],
+    ["https://cdn.wxfront.com", origin + "/weatherfront-cdn"],
+    ["https://static.wxfront.com", origin + "/weatherfront-static"],
+    ["https://api.wxfront.com", origin + "/weatherfront-wx-api"],
+    ["https://events.wxfront.com", origin + "/weatherfront-events"],
+    ["https://api.mapbox.com", origin + "/weatherfront-mapbox"],
+    ["https://a.tiles.mapbox.com", origin + "/weatherfront-mapbox-tiles"],
+    ["https://b.tiles.mapbox.com", origin + "/weatherfront-mapbox-tiles"],
+    ["https://c.tiles.mapbox.com", origin + "/weatherfront-mapbox-tiles"],
+    ["https://d.tiles.mapbox.com", origin + "/weatherfront-mapbox-tiles"],
   ];
 
   var REFRESH_MS = 5000;
@@ -55,7 +57,6 @@
     };
   }
 
-  // Mapbox GL and other libs create Image/Worker/script URLs directly.
   try {
     var desc = Object.getOwnPropertyDescriptor(HTMLImageElement.prototype, "src");
     if (desc && desc.set) {
