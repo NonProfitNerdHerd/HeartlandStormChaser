@@ -125,6 +125,23 @@ npm run deploy
 
 Pushes to `main` also deploy via GitHub Actions when CI is configured.
 
+## Home PC autostart (OBS / GPS / WeatherFront)
+
+On the broadcast home PC, after Windows **restart + login**, these should come up automatically:
+
+| Service | Port | Notes |
+|---------|------|--------|
+| Home GPS Bridge | `10111` (status), `10110` (NMEA) | Install under `%LOCALAPPDATA%\Heartland\HomeGpsBridge` |
+| WeatherFront Chromium controller | `10112` | `%LOCALAPPDATA%\Heartland\WeatherFrontOBS` |
+| OBS listener (+ tunnel) | `8791` | See broadcast-control docs |
+| OBS Studio | — | Optional Windows Startup shortcut |
+
+**Working pattern:** Scheduled Tasks as **Interactive + At logon**, running **`node.exe` directly** (not fragile `cmd` wrappers or S4U-at-startup).
+
+Full step-by-step (copy to a new PC, verify, reboot checklist, troubleshooting):
+
+**[docs/home-pc-autostart.md](docs/home-pc-autostart.md)**
+
 ## Documentation
 
 Full local dev, D1, Git, and deployment guide:
@@ -134,6 +151,10 @@ Full local dev, D1, Git, and deployment guide:
 Broadcast Control Center (OBS listener setup):
 
 **[docs/broadcast-control.md](docs/broadcast-control.md)**
+
+Home PC reboot autostart (GPS bridge, WeatherFront, listener, OBS):
+
+**[docs/home-pc-autostart.md](docs/home-pc-autostart.md)**
 
 ## Project layout
 
@@ -147,7 +168,8 @@ services/obs-listener/ → Local OBS WebSocket listener (Node/TS)
 migrations/      → D1 SQL schema changes
 android-gps/     → Android GPS sender app (Kotlin)
 wrangler.jsonc   → Cloudflare Worker + D1 config
-docs/            → Workflow and setup guides
+docs/            → Workflow, broadcast control, home PC autostart guides
+tools/           → Home GPS Bridge, WeatherFront OBS controller, etc.
 ```
 
 ## Stack

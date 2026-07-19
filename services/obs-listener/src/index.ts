@@ -2,6 +2,7 @@ import { loadConfig, loadDotEnv } from "./config.js";
 import { EventLog } from "./event-log.js";
 import { createHttpServer } from "./http-server.js";
 import { ObsController } from "./obs-controller.js";
+import { startOverlayBrowserRefresh } from "./overlay-refresh.js";
 import { startPlatformConfigSync } from "./platform-sync.js";
 
 async function main(): Promise<void> {
@@ -13,6 +14,7 @@ async function main(): Promise<void> {
   const controller = new ObsController(config, events);
   const server = createHttpServer(config, controller);
   const stopSync = startPlatformConfigSync(config, controller, events);
+  const stopOverlayRefresh = startOverlayBrowserRefresh(config, controller, events);
 
   server.listen(config.listenerPort, config.listenerHost, () => {
     console.log(
@@ -24,6 +26,7 @@ async function main(): Promise<void> {
 
   const shutdown = async () => {
     console.log("[obs-listener] shutting down…");
+    stopOverlayRefresh();
     stopSync();
     await controller.stop();
     server.close();

@@ -15,6 +15,7 @@
     var next = window.location.pathname + window.location.search;
     signInEl.href = "/login.html?next=" + encodeURIComponent(next);
     signInEl.hidden = false;
+    signInEl.textContent = "Not signed in — Sign in";
     signOutEl.hidden = true;
   }
 
@@ -24,6 +25,7 @@
       userEl.hidden = false;
     }
     signInEl.hidden = true;
+    signInEl.textContent = "Sign in";
     signOutEl.hidden = false;
   }
 

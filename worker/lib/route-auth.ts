@@ -9,6 +9,7 @@ const PUBLIC_API_PREFIXES = [
   "/api/auth/me",
   "/api/gps/pair",
   "/api/gps/health",
+  "/api/gps/home-bridge",
   "/api/gps/platform",
   "/api/overlay/",
   "/api/overlays/",

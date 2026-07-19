@@ -8,7 +8,6 @@
   var emptyState = document.getElementById("empty-state");
   var currentLocationEl = document.getElementById("current-location");
   var targetLocationEl = document.getElementById("target-location");
-  var speedEl = document.getElementById("speed-value");
   var directionEl = document.getElementById("direction-value");
   var etaEl = document.getElementById("eta-value");
   var tempEl = document.getElementById("temp-value");
@@ -24,11 +23,6 @@
   function formatTemp(value) {
     if (value == null || Number.isNaN(value)) return "—";
     return Math.round(Number(value)) + "°";
-  }
-
-  function formatSpeedMph(value) {
-    if (value == null || Number.isNaN(value)) return "0 MPH";
-    return Math.round(Number(value)) + " MPH";
   }
 
   function formatDirection(platform) {
@@ -120,7 +114,6 @@
     targetLocationEl.textContent =
       (data.target_location && data.target_location.label) || "—";
 
-    speedEl.textContent = formatSpeedMph(platform.speed_mph);
     directionEl.textContent = formatDirection(platform);
     etaEl.textContent =
       (data.travel && data.travel.eta_display) || "--";

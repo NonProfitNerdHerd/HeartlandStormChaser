@@ -14,7 +14,16 @@
     <link rel="stylesheet" href="/css/broadcast-schedule.css" />
   </head>
   <body data-page="broadcast">
-    <header class="site-header">
+    <div
+      class="bcc-status-banner bcc-status-banner--alert"
+      data-bcc-status-banner
+      role="status"
+      aria-live="polite"
+    >
+      <p class="bcc-status-banner__message" data-bcc-status-banner-message>CHECKING STATUS…</p>
+    </div>
+
+    <header class="site-header" hidden>
       <div class="site-header__inner">
         <a class="site-logo" href="/">HeartlandStormChaser</a>
         <nav class="site-nav" aria-label="Main navigation">
@@ -34,18 +43,21 @@
     <main class="site-main site-main--wide" id="broadcast-control-root">
       <header class="bcc-header">
         <div class="bcc-header__top">
-          <h1 class="bcc-header__title">Broadcast Control Center</h1>
+          <div class="bcc-header__identity">
+            <h1 class="bcc-header__title">Broadcast Control Center</h1>
+            <div class="bcc-header__meta">
+              <p class="bcc-header__clock" data-bcc-clock>—</p>
+              <p class="bcc-header__updated" data-bcc-updated>Loading…</p>
+            </div>
+          </div>
           <div class="bcc-header__badges" aria-label="Connection status">
+            <p class="bcc-header__speed" data-bcc-speed title="Platform GPS speed and heading">—</p>
             <div data-bcc-badge-listener></div>
             <div data-bcc-badge-obs></div>
             <div data-bcc-badge-stream></div>
             <div data-bcc-badge-recording></div>
             <div data-bcc-badge-gps></div>
           </div>
-        </div>
-        <div class="bcc-header__meta">
-          <p class="bcc-header__clock" data-bcc-clock>—</p>
-          <p class="bcc-header__updated" data-bcc-updated>Loading…</p>
         </div>
         <p class="bcc-header__error" data-bcc-header-error hidden></p>
       </header>

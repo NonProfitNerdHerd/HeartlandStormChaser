@@ -34,7 +34,8 @@ class MainActivity : AppCompatActivity() {
                 0 -> getString(R.string.tab_warnings)
                 1 -> getString(R.string.tab_overlays)
                 2 -> getString(R.string.tab_gps)
-                else -> getString(R.string.tab_chases)
+                3 -> getString(R.string.tab_chases)
+                else -> getString(R.string.tab_broadcast)
             }
         }.attach()
     }

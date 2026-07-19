@@ -55,10 +55,8 @@ export function renderStreamControls(container, state, handlers) {
           : `<button type="button" class="btn btn--primary bcc-control-btn" data-action="start-record" ${!connected || busy ? "disabled" : ""}>Start recording</button>`
       }
       <button type="button" class="btn btn--secondary bcc-control-btn" data-action="schedule-broadcast" ${busy ? "disabled" : ""}>Schedule Broadcast</button>
-      <button type="button" class="btn btn--secondary bcc-control-btn" data-action="reconnect" ${busy ? "disabled" : ""}>Reconnect listener</button>
-      <button type="button" class="btn btn--secondary bcc-control-btn" data-action="refresh" ${busy ? "disabled" : ""}>Refresh OBS status</button>
       <button type="button" class="btn btn--secondary bcc-control-btn" data-action="allow-cameras">Allow / refresh cameras</button>
-      <button type="button" class="btn btn--primary bcc-control-btn" data-action="open-publisher">Open camera publisher</button>
+      <button type="button" class="btn btn--primary bcc-control-btn" data-action="open-publisher">Open camera monitor</button>
     </div>
     <p class="bcc-inline-error" data-control-error ${state.controlError ? "" : "hidden"}>${escapeHtml(state.controlError || "")}</p>
   `;
@@ -81,10 +79,8 @@ export function renderStreamControls(container, state, handlers) {
     if (confirmAction("Stop the active recording?")) handlers.stopRecording();
   });
   bind("schedule-broadcast", () => handlers.scheduleBroadcast?.());
-  bind("reconnect", () => handlers.reconnect());
-  bind("refresh", () => handlers.refresh(true));
   bind("allow-cameras", () => handlers.allowCameras?.());
-  bind("open-publisher", () => handlers.openPublisherWindow?.());
+  bind("open-publisher", () => handlers.openCameraMonitor?.());
 }
 
 export function renderTelemetry(container, telemetry) {

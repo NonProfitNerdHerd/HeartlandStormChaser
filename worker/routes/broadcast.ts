@@ -41,7 +41,7 @@ import {
   disconnectYoutube,
   getYoutubeConnectionStatus,
 } from "../lib/youtube-live";
-import { extractBearerToken } from "../lib/gps-auth";
+import { extractBearerToken, findDeviceByToken } from "../lib/gps-auth";
 import { getAuthUserFromRequest, userHasPermission } from "../lib/web-auth";
 import { routeErrorResponse } from "../lib/db-errors";
 import type { Env } from "../index";
@@ -58,19 +58,27 @@ function errorResponse(message: string, status = 400): Response {
 
 async function requireBroadcastControl(request: Request, env: Env): Promise<Response | null> {
   const user = await getAuthUserFromRequest(env, request);
-  if (!user) {
-    return errorResponse("Authentication required", 401);
+  if (user) {
+    if (
+      user.roles.includes("admin") ||
+      userHasPermission(user, "broadcast.control") ||
+      userHasPermission(user, "site.access")
+    ) {
+      return null;
+    }
+    return errorResponse("Forbidden", 403);
   }
 
-  if (
-    user.roles.includes("admin") ||
-    userHasPermission(user, "broadcast.control") ||
-    userHasPermission(user, "site.access")
-  ) {
-    return null;
+  // Paired GPS devices may create/manage scheduled broadcasts (phone create flow).
+  const token = extractBearerToken(request);
+  if (token) {
+    const device = await findDeviceByToken(env, token);
+    if (device && device.enabled === 1) {
+      return null;
+    }
   }
 
-  return errorResponse("Forbidden", 403);
+  return errorResponse("Authentication required", 401);
 }
 
 function toneFromGps(status: string | null | undefined): HealthTone {
@@ -593,7 +601,8 @@ export async function handleBroadcast(request: Request, env: Env): Promise<Respo
       return json({ ok: true, broadcast: created }, 201);
     }
 
-    const scheduledMatch = pathname.match(/^\/api\/broadcast\/scheduled\/([^/]+)(?:\/([a-z_]+))?$/);
+    // Allow hyphens in actions (start-output, confirm-ingest, go-live, emergency-stop).
+    const scheduledMatch = pathname.match(/^\/api\/broadcast\/scheduled\/([^/]+)(?:\/([a-z_-]+))?$/);
     if (scheduledMatch) {
       const broadcastId = decodeURIComponent(scheduledMatch[1]);
       const action = scheduledMatch[2] || null;

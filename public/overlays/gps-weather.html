@@ -23,10 +23,6 @@
 
             <div class="overlay-bar__metrics overlay-bar__metrics--travel">
               <div class="overlay-metric">
-                <span class="overlay-metric__label">SPEED</span>
-                <span class="overlay-metric__value" id="speed-value">0 MPH</span>
-              </div>
-              <div class="overlay-metric">
                 <span class="overlay-metric__label">DIR</span>
                 <span class="overlay-metric__value" id="direction-value">--</span>
               </div>
@@ -38,27 +34,24 @@
           </div>
 
           <div class="overlay-bar__weather">
-            <div class="overlay-bar__metrics overlay-bar__metrics--weather-top">
-              <div class="overlay-pill overlay-pill--temp">
-                <span class="overlay-metric__label">TEMP</span>
-                <span class="overlay-metric__value" id="temp-value">—</span>
-              </div>
-              <div class="overlay-pill">
-                <span class="overlay-metric__label">WIND</span>
-                <span class="overlay-metric__value" id="wind-value">—</span>
-              </div>
+            <div class="overlay-weather-col overlay-weather-col--hero">
+              <span class="overlay-metric__label">TEMP</span>
+              <span class="overlay-metric__value overlay-metric__value--hero" id="temp-value">—</span>
             </div>
-
-            <div class="overlay-bar__metrics overlay-bar__metrics--weather-bottom">
-              <div class="overlay-metric">
+            <div class="overlay-weather-col overlay-weather-col--hero">
+              <span class="overlay-metric__label">WIND</span>
+              <span class="overlay-metric__value overlay-metric__value--hero" id="wind-value">—</span>
+            </div>
+            <div class="overlay-weather-col overlay-weather-col--stack">
+              <div class="overlay-metric overlay-metric--compact">
                 <span class="overlay-metric__label">DP</span>
                 <span class="overlay-metric__value" id="dewpoint-value">—</span>
               </div>
-              <div class="overlay-metric">
-                <span class="overlay-metric__label">PRESSURE</span>
+              <div class="overlay-metric overlay-metric--compact">
+                <span class="overlay-metric__label">Press</span>
                 <span class="overlay-metric__value" id="pressure-value">—</span>
               </div>
-              <div class="overlay-metric">
+              <div class="overlay-metric overlay-metric--compact">
                 <span class="overlay-metric__label">RH</span>
                 <span class="overlay-metric__value" id="humidity-value">—</span>
               </div>

@@ -7,6 +7,7 @@ export interface PlatformLocation {
   speed_mph: number | null;
   heading_degrees: number | null;
   accuracy_meters: number | null;
+  altitude_meters: number | null;
   battery_percent: number | null;
   timestamp_utc: string;
   received_at_utc: string;
@@ -36,7 +37,7 @@ export async function getPlatformSource(env: Env): Promise<PlatformSource | null
 
   const location = await env.DB.prepare(
     `SELECT latitude, longitude, speed_mph, heading_degrees, accuracy_meters,
-            battery_percent, timestamp_utc, received_at_utc
+            altitude_meters, battery_percent, timestamp_utc, received_at_utc
      FROM gps_latest_location
      WHERE device_id = ?`,
   )
@@ -47,6 +48,7 @@ export async function getPlatformSource(env: Env): Promise<PlatformSource | null
       speed_mph: number | null;
       heading_degrees: number | null;
       accuracy_meters: number | null;
+      altitude_meters: number | null;
       battery_percent: number | null;
       timestamp_utc: string;
       received_at_utc: string;
@@ -77,6 +79,7 @@ export async function getPlatformSource(env: Env): Promise<PlatformSource | null
       speed_mph: location.speed_mph,
       heading_degrees: location.heading_degrees,
       accuracy_meters: location.accuracy_meters,
+      altitude_meters: location.altitude_meters,
       battery_percent: location.battery_percent,
       timestamp_utc: location.timestamp_utc,
       received_at_utc: location.received_at_utc,

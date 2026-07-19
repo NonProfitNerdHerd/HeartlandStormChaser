@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Quad VDO.Ninja camera monitor for HeartlandStormChaser broadcast" />
+    <title>Camera Monitor · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/broadcast-control.css" />
+    <link rel="stylesheet" href="/css/broadcast-monitor.css" />
+  </head>
+  <body data-page="broadcast-monitor" class="bcc-monitor-page">
+    <main class="bcc-monitor">
+      <header class="bcc-monitor__header">
+        <div>
+          <h1 class="bcc-monitor__title">Camera Monitor</h1>
+          <p class="bcc-monitor__help">Pick a VDO.Ninja camera for each pane to watch the live view feed.</p>
+        </div>
+        <div class="bcc-monitor__actions">
+          <a class="btn btn--secondary" href="/broadcast/control/">Back to Broadcast</a>
+          <button type="button" class="btn btn--secondary" data-mon-refresh>Refresh feeds</button>
+        </div>
+      </header>
+      <p class="bcc-monitor__status" data-mon-status>Loading cameras…</p>
+      <div class="bcc-monitor__quad" data-mon-quad></div>
+    </main>
+    <script type="module" src="/js/broadcast/camera-monitor.js"></script>
+  </body>
+</html>

@@ -83,4 +83,9 @@ export interface ListenerConfig {
   obsReconnectMs: number;
   /** Cloudflare Worker origin used to pull OBS settings saved in the browser. */
   platformBaseUrl: string;
+  /**
+   * How often to hard-reload OBS Browser Sources that load /overlays/ URLs.
+   * Set to 0 to disable. Default 300000 (5 minutes).
+   */
+  overlayBrowserRefreshMs: number;
 }

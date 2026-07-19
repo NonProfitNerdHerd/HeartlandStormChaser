@@ -1,0 +1,25 @@
+{
+  "name": "weatherfront-obs-controller",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Dedicated WeatherFront Chromium window for OBS Window Capture, fed by Home GPS Bridge",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "test": "node --test test/**/*.test.js",
+    "check": "node --check src/index.js && node --check src/config.js && node --check src/gps-client.js && node --check src/browser-manager.js && node --check src/follow-control.js && node --check src/status-server.js && node --check src/watchdog.js && node --check src/obs-client.js && node --check src/pid.js && node --check src/logger.js && node --check src/paths.js && node --check src/redaction.js && node --check src/recovery.js && node --check src/title-keeper.js && node --check src/inspect-weatherfront.js && node --check src/obs-setup.js && node --check src/gps-hud.js && node --check src/location-marker.js",
+    "inspect:weatherfront": "node --env-file=.env src/inspect-weatherfront.js",
+    "obs:setup": "node --env-file=.env src/obs-setup.js",
+    "install:local": "powershell -ExecutionPolicy Bypass -File ./scripts/install-local.ps1",
+    "install:startup": "powershell -ExecutionPolicy Bypass -File ./scripts/install-startup-task.ps1",
+    "uninstall:startup": "powershell -ExecutionPolicy Bypass -File ./scripts/uninstall-startup-task.ps1",
+    "postinstall": "npx playwright install chromium"
+  },
+  "dependencies": {
+    "obs-websocket-js": "^5.0.6",
+    "playwright": "^1.52.0"
+  }
+}

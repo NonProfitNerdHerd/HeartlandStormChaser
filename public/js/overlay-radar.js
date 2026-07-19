@@ -23,14 +23,18 @@
   var radarStatusEl = document.getElementById("radar-status");
   var radarFrameEl = document.getElementById("radar-frame");
 
-  var FRAME_MS = 400;
+  var FRAME_MS = 900;
   var map = null;
   var baseLayer = null;
+  var citiesLayer = null;
+  var highwaysLayer = null;
   var radarLayer = null;
   var marker = null;
   var lastCenter = null;
   var lastMapStyle = null;
   var lastZoomSetting = null;
+  var lastCitiesVisible = null;
+  var lastHighwaysVisible = null;
   var pollTimer = null;
   var animTimer = null;
   var inFlight = false;
@@ -41,6 +45,7 @@
   var animIndex = 0;
   var lastFramesKey = "";
   var displayedFrameTime = null;
+  var hudEl = document.getElementById("radar-hud");
 
   if (isConfig && configEl) {
     configEl.hidden = false;
@@ -93,6 +98,9 @@
   }
 
   function applyVisibility(settings) {
+    if (hudEl) {
+      hudEl.hidden = settings.show_hud === false;
+    }
     var mapFields = {
       coords: settings.show_coords,
       updated: settings.show_updated,
@@ -101,6 +109,59 @@
       var row = document.querySelector('[data-field="' + key + '"]');
       if (row) row.hidden = !mapFields[key];
     });
+  }
+
+  function syncMapOverlays(settings) {
+    if (!map || !settings) return;
+    var showCities = settings.show_cities !== false;
+    var showHighways = settings.show_highways !== false;
+
+    // Highways under city labels so names stay readable.
+    if (showHighways !== lastHighwaysVisible) {
+      if (highwaysLayer) {
+        map.removeLayer(highwaysLayer);
+        highwaysLayer = null;
+      }
+      if (showHighways) {
+        highwaysLayer = L.tileLayer(
+          "https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}",
+          {
+            maxZoom: 19,
+            opacity: 0.85,
+            pane: "overlayPane",
+            attribution: "Roads &copy; Esri",
+          },
+        );
+        highwaysLayer.addTo(map);
+      }
+      lastHighwaysVisible = showHighways;
+      // Rebuild cities on top after highway layer changes.
+      if (citiesLayer) {
+        map.removeLayer(citiesLayer);
+        citiesLayer = null;
+        lastCitiesVisible = null;
+      }
+    }
+
+    if (showCities !== lastCitiesVisible) {
+      if (citiesLayer) {
+        map.removeLayer(citiesLayer);
+        citiesLayer = null;
+      }
+      if (showCities) {
+        citiesLayer = L.tileLayer(
+          "https://{s}.basemaps.cartocdn.com/dark_only_labels/{z}/{x}/{y}{r}.png",
+          {
+            maxZoom: 19,
+            opacity: 0.95,
+            pane: "overlayPane",
+            attribution: "&copy; CARTO labels",
+          },
+        );
+        citiesLayer.addTo(map);
+      }
+      lastCitiesVisible = showCities;
+    }
   }
 
   function ensureMap(style, zoom) {
@@ -128,16 +189,18 @@
   }
 
   function setBaseLayer(style) {
-    if (!map || style === lastMapStyle) return;
+    if (!map) return;
+    if (style === lastMapStyle && baseLayer) return;
     if (baseLayer) {
       map.removeLayer(baseLayer);
       baseLayer = null;
     }
+    // Use no-label basemaps so city/highway overlays can be toggled independently.
     if (style === "streets") {
-      baseLayer = L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap",
-      });
+      baseLayer = L.tileLayer(
+        "https://{s}.basemaps.cartocdn.com/rastertiles/voyager_nolabels/{z}/{x}/{y}{r}.png",
+        { maxZoom: 19, attribution: "&copy; OpenStreetMap &copy; CARTO" },
+      );
     } else if (style === "satellite") {
       baseLayer = L.tileLayer(
         "https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",
@@ -145,12 +208,15 @@
       );
     } else {
       baseLayer = L.tileLayer(
-        "https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+        "https://{s}.basemaps.cartocdn.com/dark_nolabels/{z}/{x}/{y}{r}.png",
         { maxZoom: 19, attribution: "&copy; OpenStreetMap &copy; CARTO" },
       );
     }
     baseLayer.addTo(map);
     lastMapStyle = style;
+    // Force overlay rebuild after basemap swap.
+    lastCitiesVisible = null;
+    lastHighwaysVisible = null;
   }
 
   function clearAnimTimer() {
@@ -301,6 +367,9 @@
       if (el) el.value = String(values[name]);
     });
     var shows = {
+      overlay_radar_show_cities: settings.show_cities !== false,
+      overlay_radar_show_highways: settings.show_highways !== false,
+      overlay_radar_show_hud: settings.show_hud !== false,
       overlay_radar_show_coords: settings.show_coords,
       overlay_radar_show_updated: settings.show_updated,
     };
@@ -354,7 +423,10 @@
       latestSettings.zoom !== settings.zoom ||
       latestSettings.opacity !== settings.opacity ||
       latestSettings.polling_enabled !== settings.polling_enabled ||
-      latestSettings.polling_interval_sec !== settings.polling_interval_sec;
+      latestSettings.polling_interval_sec !== settings.polling_interval_sec ||
+      latestSettings.show_cities !== settings.show_cities ||
+      latestSettings.show_highways !== settings.show_highways ||
+      latestSettings.show_hud !== settings.show_hud;
     var nextFramesKey = framesKey(radar.frames);
     var framesChanged = nextFramesKey !== lastFramesKey;
 
@@ -367,6 +439,7 @@
     if (!ensureMap(settings.map_style, settings.zoom)) {
       return;
     }
+    syncMapOverlays(settings);
 
     fillConfigForm(settings, radar);
 
@@ -459,6 +532,18 @@
         overlay_radar_zoom: String(fd.get("overlay_radar_zoom") || "8"),
         overlay_radar_opacity: String(fd.get("overlay_radar_opacity") || "0.65"),
         overlay_radar_map_style: String(fd.get("overlay_radar_map_style") || "dark"),
+        overlay_radar_show_cities: configForm.querySelector('[name="overlay_radar_show_cities"]')
+          .checked
+          ? "1"
+          : "0",
+        overlay_radar_show_highways: configForm.querySelector(
+          '[name="overlay_radar_show_highways"]',
+        ).checked
+          ? "1"
+          : "0",
+        overlay_radar_show_hud: configForm.querySelector('[name="overlay_radar_show_hud"]').checked
+          ? "1"
+          : "0",
         overlay_radar_show_coords: configForm.querySelector('[name="overlay_radar_show_coords"]')
           .checked
           ? "1"

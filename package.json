@@ -9,7 +9,11 @@
     "check": "wrangler check",
     "obs-listener": "npm --prefix services/obs-listener start",
     "obs-listener:install": "npm --prefix services/obs-listener install",
-    "test:obs-listener": "npm --prefix services/obs-listener test"
+    "test:obs-listener": "npm --prefix services/obs-listener test",
+    "home-gps-bridge": "npm --prefix tools/home-gps-bridge start",
+    "test:home-gps-bridge": "npm --prefix tools/home-gps-bridge test",
+    "weatherfront-obs": "npm --prefix tools/weatherfront-obs-controller start",
+    "test:weatherfront-obs": "npm --prefix tools/weatherfront-obs-controller test"
   },
   "devDependencies": {
     "@cloudflare/workers-types": "^4.20250705.0",

@@ -1,0 +1,15 @@
+{
+  "name": "home-gps-bridge",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Windows Home GPS Bridge — polls Platform GPS Source and serves local NMEA",
+  "type": "module",
+  "engines": {
+    "node": ">=20"
+  },
+  "scripts": {
+    "start": "node --env-file=.env src/index.js",
+    "test": "node --test test/**/*.test.js",
+    "check": "node --check src/index.js && node --check src/config.js && node --check src/nmea.js && node --check src/poller.js && node --check src/nmea-server.js && node --check src/status-server.js && node --check src/logger.js && node --check src/pid.js"
+  }
+}

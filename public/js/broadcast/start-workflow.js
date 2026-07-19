@@ -1,5 +1,41 @@
 import { BroadcastApi } from "./api.js";
-import { confirmAction, escapeHtml } from "./ui-utils.js";
+import { confirmAction, escapeHtml, youtubeWatchUrl } from "./ui-utils.js";
+
+const SELECTABLE_STATUSES = new Set([
+  "draft",
+  "scheduled",
+  "selected",
+  "preparing",
+  "prepared",
+  "failed",
+  "waiting_for_ingest",
+  "ready_to_go_live",
+  "starting_output",
+]);
+
+const ENDED_STATUSES = new Set(["completed", "cancelled", "ending"]);
+
+function operatorTimeZone() {
+  try {
+    return Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago";
+  } catch {
+    return "America/Chicago";
+  }
+}
+
+/** YYYY-MM-DD in the given IANA time zone. */
+function calendarDayKey(instant, timeZone) {
+  try {
+    return new Intl.DateTimeFormat("en-CA", {
+      timeZone: timeZone || "America/Chicago",
+      year: "numeric",
+      month: "2-digit",
+      day: "2-digit",
+    }).format(new Date(instant));
+  } catch {
+    return String(instant || "").slice(0, 10);
+  }
+}
 
 function formatWhen(iso, timeZone) {
   try {
@@ -24,11 +60,34 @@ function durationText(startIso) {
   return `${h}:${String(m).padStart(2, "0")}:${String(sec).padStart(2, "0")}`;
 }
 
+function renderSteps(steps) {
+  if (!steps?.length) return "";
+  return `<ol class="bcc-workflow__steps">${steps
+    .map((s) => {
+      const tone = s.status || "pending";
+      return `<li class="bcc-workflow__step bcc-workflow__step--${escapeHtml(tone)}">
+        <strong>${escapeHtml(s.label || s.key)}</strong>
+        <span>${escapeHtml(s.status || "pending")}${s.detail ? ` — ${escapeHtml(s.detail)}` : ""}</span>
+      </li>`;
+    })
+    .join("")}</ol>`;
+}
+
+function isSelectable(b) {
+  return Boolean(b && SELECTABLE_STATUSES.has(b.status));
+}
+
+function isEnded(b) {
+  return Boolean(b && ENDED_STATUSES.has(b.status));
+}
+
 /**
+ * Chase-day Start Streaming: pick today's broadcast → prepare → Start Stream.
+ *
  * @param {HTMLDialogElement | null} dialog
  * @param {{
  *   getStatus: () => object | null,
- *   openSchedule: () => void,
+ *   openSchedule: (broadcastId?: string) => void,
  *   onChanged?: () => void,
  * }} opts
  */
@@ -38,15 +97,16 @@ export function createStartWorkflow(dialog, opts) {
   }
 
   let broadcast = null;
-  let upcoming = [];
+  /** @type {object[]} */
+  let todays = [];
   let steps = [];
-  let phase = "select"; // select | validate | prepare | start | ingest | live | summary
+  /** @type {"select"|"preparing"|"ready"|"working"|"live"|"summary"} */
+  let phase = "select";
   let busy = false;
   let error = null;
   let pollTimer = 0;
-  let startIdempotency = null;
   let summary = null;
-  let youtubeIngest = null;
+  let todayLabel = "";
 
   function close() {
     stopPoll();
@@ -64,150 +124,152 @@ export function createStartWorkflow(dialog, opts) {
     return opts.getStatus?.() || null;
   }
 
+  function watchUrl(b = broadcast) {
+    return youtubeWatchUrl(b);
+  }
+
+  function canGoLive(b) {
+    if (!b) return false;
+    if (!isSelectable(b)) return false;
+    if (["live", "ending"].includes(b.status)) return false;
+    return true;
+  }
+
+  function openEdit(id) {
+    close();
+    opts.openSchedule?.(id || broadcast?.id);
+  }
+
   async function loadContext() {
     error = null;
-    const data = await BroadcastApi.listScheduled();
-    upcoming = (data.broadcasts || []).filter((b) =>
-      ["draft", "scheduled", "selected", "prepared", "failed"].includes(b.status),
-    );
-    broadcast = data.activeWorkflow || data.selectedBroadcast || null;
-    if (broadcast) {
-      restorePhaseFromStatus(broadcast.status);
-    } else {
-      phase = "select";
-    }
-  }
-
-  function restorePhaseFromStatus(s) {
-    if (["preparing", "prepared"].includes(s)) phase = "prepare";
-    else if (s === "starting_output") phase = "start";
-    else if (s === "waiting_for_ingest") phase = "ingest";
-    else if (s === "ready_to_go_live") phase = "ingest";
-    else if (["going_live", "live"].includes(s)) phase = "live";
-    else if (["ending", "completed"].includes(s)) phase = "summary";
-    else if (s === "failed") phase = "prepare";
-    else phase = "select";
-  }
-
-  async function selectBroadcast(id) {
-    if (busy) return;
-    busy = true;
-    error = null;
-    render();
+    const tz = operatorTimeZone();
+    const todayKey = calendarDayKey(Date.now(), tz);
     try {
-      const data = await BroadcastApi.selectScheduled(id);
-      broadcast = data.broadcast;
-      phase = "validate";
-      opts.onChanged?.();
-      render();
-    } catch (err) {
-      error = err instanceof Error ? err.message : "Select failed";
-    } finally {
-      busy = false;
-      render();
-    }
-  }
-
-  async function runPrepare() {
-    if (!broadcast || busy) return;
-    busy = true;
-    error = null;
-    phase = "prepare";
-    render();
-    try {
-      const result = await BroadcastApi.prepareScheduled(broadcast.id);
-      steps = result.steps || [];
-      broadcast = result.broadcast;
-      if (result.youtube_ingest) {
-        youtubeIngest = result.youtube_ingest;
-      }
-      if (!result.ok) {
-        error = result.error || "Prepare failed";
-      } else {
-        phase = "start";
-      }
-      opts.onChanged?.();
-    } catch (err) {
-      error = err instanceof Error ? err.message : "Prepare failed";
-    } finally {
-      busy = false;
-      render();
-    }
-  }
-
-  async function runStartOutput() {
-    if (!broadcast || busy) return;
-    busy = true;
-    error = null;
-    startIdempotency = startIdempotency || `start-${broadcast.id}-${Date.now()}`;
-    render();
-    try {
-      const result = await BroadcastApi.startScheduledOutput(broadcast.id, startIdempotency);
-      steps = result.steps || steps;
-      broadcast = result.broadcast;
-      if (!result.ok) {
-        error = result.error || "Start output failed";
-        phase = "start";
-      } else {
-        phase = "ingest";
-        startIngestPoll();
-      }
-      opts.onChanged?.();
-    } catch (err) {
-      error = err instanceof Error ? err.message : "Start output failed";
-    } finally {
-      busy = false;
-      render();
-    }
-  }
-
-  function startIngestPoll() {
-    stopPoll();
-    void tickIngest();
-    pollTimer = window.setInterval(() => {
-      void tickIngest();
-    }, 3000);
-  }
-
-  async function tickIngest() {
-    if (!broadcast) return;
-    try {
-      const result = await BroadcastApi.confirmScheduledIngest(broadcast.id);
-      steps = result.steps || steps;
-      broadcast = result.broadcast || broadcast;
-      if (result.ok && broadcast.status === "ready_to_go_live") {
-        // keep polling lightly for live monitor later
-      }
-      render();
-      opts.onChanged?.();
+      todayLabel = new Intl.DateTimeFormat(undefined, {
+        timeZone: tz,
+        weekday: "short",
+        month: "short",
+        day: "numeric",
+        year: "numeric",
+      }).format(new Date());
     } catch {
-      /* keep waiting */
+      todayLabel = todayKey;
+    }
+
+    const data = await BroadcastApi.listScheduled();
+    const all = data.broadcasts || [];
+    todays = all
+      .filter((b) => calendarDayKey(b.scheduled_at, tz) === todayKey)
+      .filter((b) => isSelectable(b) || isEnded(b) || b.status === "live")
+      .sort((a, b) => String(a.scheduled_at).localeCompare(String(b.scheduled_at)));
+
+    const active = data.activeWorkflow || null;
+    if (active?.status === "live") {
+      broadcast = active;
+      phase = "live";
+      startLivePoll();
+      return;
+    }
+    if (active && ["ending", "completed"].includes(active.status)) {
+      broadcast = active;
+      phase = "summary";
+      summary = {
+        title: active.title,
+        status: active.status,
+        started: active.actual_start_at,
+        ended: active.actual_end_at,
+        emergency: Boolean(active.emergency_stopped),
+      };
+      return;
+    }
+
+    // Always force an explicit pick — do not sticky-select yesterday's broadcast.
+    broadcast = null;
+    phase = "select";
+  }
+
+  async function selectAndPrepare(id) {
+    if (busy) return;
+    const target = todays.find((b) => b.id === id);
+    if (!target || !isSelectable(target)) {
+      error = "That broadcast cannot be started";
+      render();
+      return;
+    }
+
+    busy = true;
+    error = null;
+    broadcast = target;
+    phase = "preparing";
+    steps = [];
+    render();
+
+    try {
+      const selected = await BroadcastApi.selectScheduled(id);
+      broadcast = selected.broadcast || target;
+      opts.onChanged?.();
+
+      const prepared = await BroadcastApi.prepareScheduled(id);
+      steps = prepared.steps || [];
+      broadcast = prepared.broadcast || broadcast;
+      if (prepared.youtube_ingest?.watch_url && broadcast) {
+        broadcast = { ...broadcast, watch_url: prepared.youtube_ingest.watch_url };
+      }
+
+      if (!prepared.ok) {
+        error = prepared.error || broadcast?.error_message || "Prepare failed — update the broadcast, then try again";
+        phase = "select";
+      } else {
+        phase = "ready";
+      }
+      opts.onChanged?.();
+    } catch (err) {
+      const data = err && typeof err === "object" && "data" in err ? err.data : null;
+      if (data?.steps) steps = data.steps;
+      if (data?.broadcast) broadcast = data.broadcast;
+      error =
+        (err instanceof Error ? err.message : null) ||
+        data?.error ||
+        "Prepare failed — update the broadcast, then try again";
+      phase = "select";
+    } finally {
+      busy = false;
+      render();
     }
   }
 
   async function runGoLive() {
     if (!broadcast || busy) return;
-    if (broadcast.status !== "ready_to_go_live") {
-      error = "Ingest is not ready yet";
+    if (!canGoLive(broadcast)) {
+      error = "This broadcast cannot go live from its current status";
+      phase = "select";
       render();
       return;
     }
     busy = true;
     error = null;
+    phase = "working";
+    steps = [];
     render();
     try {
+      await BroadcastApi.selectScheduled(broadcast.id);
       const result = await BroadcastApi.goLiveScheduled(broadcast.id);
-      steps = result.steps || steps;
+      steps = result.steps || [];
       broadcast = result.broadcast;
+      if (result.youtube_ingest?.watch_url && broadcast) {
+        broadcast = { ...broadcast, watch_url: result.youtube_ingest.watch_url };
+      }
       if (!result.ok) {
-        error = result.error || "Go live failed";
+        error = result.error || "Go Live failed — tap Start Stream again to retry";
+        phase = "ready";
       } else {
         phase = "live";
         startLivePoll();
       }
       opts.onChanged?.();
     } catch (err) {
-      error = err instanceof Error ? err.message : "Go live failed";
+      error = err instanceof Error ? err.message : "Go Live failed — tap Start Stream again to retry";
+      phase = "ready";
     } finally {
       busy = false;
       render();
@@ -257,57 +319,62 @@ export function createStartWorkflow(dialog, opts) {
     }
   }
 
-  function renderSteps(list) {
-    if (!list?.length) return "";
-    return `
-      <ol class="bcc-workflow__steps">
-        ${list
-          .map(
-            (s) => `
-          <li class="bcc-workflow__step bcc-workflow__step--${escapeHtml(s.status)}">
-            <strong>${escapeHtml(s.label)}</strong>
-            <span>${escapeHtml(s.status)}</span>
-            ${s.detail ? `<div>${escapeHtml(s.detail)}</div>` : ""}
-          </li>`,
-          )
-          .join("")}
-      </ol>
-    `;
-  }
-
   function renderLiveMonitor() {
     const st = status();
     const listener = st?.listener || {};
     const stats = listener.stats || {};
-    const updated = st?.updatedAt || listener.listenerUpdatedAt;
-    const stale =
-      updated && Date.now() - new Date(updated).getTime() > 20000
-        ? "STALE"
-        : "OK";
+    const updated = listener.listenerUpdatedAt || "";
     return `
       <div class="bcc-workflow__monitor">
-        <h3>${escapeHtml(broadcast?.title || "Broadcast")}</h3>
         <dl class="bcc-workflow__grid">
-          <div><dt>Live duration</dt><dd>${escapeHtml(durationText(broadcast?.actual_start_at))}</dd></div>
-          <div><dt>OBS connection</dt><dd>${listener.obsConnected ? "Connected" : "Disconnected"}</dd></div>
-          <div><dt>OBS streaming</dt><dd>${listener.streamingActive ? "Active" : "Inactive"}</dd></div>
-          <div><dt>Platform</dt><dd>${escapeHtml(broadcast?.platform || "obs")}</dd></div>
-          <div><dt>Ingest</dt><dd>${listener.streamingActive ? "Active" : "Waiting"}</dd></div>
-          <div><dt>Current scene</dt><dd>${escapeHtml(listener.currentProgramScene || "—")}</dd></div>
-          <div><dt>Active FPS</dt><dd>${stats.activeFps == null ? "—" : escapeHtml(String(stats.activeFps))}</dd></div>
+          <div><dt>OBS streaming</dt><dd>${listener.streamingActive ? "Yes" : "No"}</dd></div>
+          <div><dt>Bitrate</dt><dd>${escapeHtml(String(stats.outputBytesPerSec ?? stats.bitrate ?? "—"))}</dd></div>
           <div><dt>CPU</dt><dd>${stats.cpuUsage == null ? "—" : `${escapeHtml(String(stats.cpuUsage))}%`}</dd></div>
-          <div><dt>Skipped frames</dt><dd>${escapeHtml(String(stats.outputSkippedFrames ?? "—"))}</dd></div>
           <div><dt>Stream timecode</dt><dd>${escapeHtml(stats.streamTimecode || "—")}</dd></div>
-          <div><dt>Last update</dt><dd>${escapeHtml(updated || "—")} (${stale})</dd></div>
-          <div><dt>Status</dt><dd>${escapeHtml(broadcast?.status || "—")}</dd></div>
+          <div><dt>On air</dt><dd>${escapeHtml(durationText(broadcast?.actual_start_at))}</dd></div>
+          <div><dt>Last update</dt><dd>${escapeHtml(updated || "—")}</dd></div>
         </dl>
       </div>
     `;
   }
 
+  function renderPickList() {
+    if (!todays.length) {
+      return `<p class="bcc-empty">No broadcasts scheduled for today (${escapeHtml(todayLabel)}). Open Schedule to create one.</p>`;
+    }
+    return todays
+      .map((b) => {
+        const ended = isEnded(b);
+        const selectable = isSelectable(b) && !busy;
+        const classes = [
+          "bcc-workflow__pick",
+          ended ? "bcc-workflow__pick--ended" : "",
+          broadcast?.id === b.id && !ended ? "bcc-workflow__pick--active" : "",
+        ]
+          .filter(Boolean)
+          .join(" ");
+        if (ended) {
+          return `
+            <div class="${classes}" aria-disabled="true">
+              <strong>${escapeHtml(b.title)}</strong>
+              <span>${escapeHtml(formatWhen(b.scheduled_at, b.time_zone))}</span>
+              <span>${escapeHtml(b.status)} · ended — not selectable</span>
+            </div>`;
+        }
+        return `
+          <button type="button" class="${classes}" data-pick="${escapeHtml(b.id)}" ${selectable ? "" : "disabled"}>
+            <strong>${escapeHtml(b.title)}</strong>
+            <span>${escapeHtml(formatWhen(b.scheduled_at, b.time_zone))}</span>
+            <span>${escapeHtml(b.status)} · ${escapeHtml(b.platform)}${youtubeWatchUrl(b) ? " · has YouTube link" : ""}</span>
+          </button>`;
+      })
+      .join("");
+  }
+
   function render() {
-    const st = status();
-    const canGoLive = broadcast?.status === "ready_to_go_live" && Boolean(st?.listener?.streamingActive);
+    const watch = watchUrl();
+    const goEnabled = canGoLive(broadcast) && !busy;
+    const needsEdit = Boolean(error && broadcast && phase === "select");
 
     dialog.innerHTML = `
       <div class="bcc-dialog bcc-dialog--workflow">
@@ -321,86 +388,76 @@ export function createStartWorkflow(dialog, opts) {
             phase === "select"
               ? `
             <section>
-              <h3>1. Select or confirm broadcast</h3>
-              ${
-                broadcast
-                  ? `<p>Selected: <strong>${escapeHtml(broadcast.title)}</strong> · ${escapeHtml(formatWhen(broadcast.scheduled_at, broadcast.time_zone))} · ${escapeHtml(broadcast.platform)} · ${escapeHtml(broadcast.status)}</p>
-                     <button type="button" class="btn btn--secondary" data-clear-select>Change selection</button>
-                     <button type="button" class="btn btn--primary" data-to-validate ${busy ? "disabled" : ""}>Continue</button>`
-                  : `<p class="bcc-empty">No broadcast selected. Choose one below or open the schedule.</p>`
-              }
+              <h3>Step 1 — Select today's broadcast</h3>
+              <p class="bcc-empty">Showing broadcasts scheduled for ${escapeHtml(todayLabel)}. Pick one to check that it is ready.</p>
               <div class="bcc-workflow__list">
-                ${
-                  upcoming.length
-                    ? upcoming
-                        .map(
-                          (b) => `
-                  <button type="button" class="bcc-workflow__pick" data-pick="${escapeHtml(b.id)}" ${busy ? "disabled" : ""}>
-                    <strong>${escapeHtml(b.title)}</strong>
-                    <span>${escapeHtml(formatWhen(b.scheduled_at, b.time_zone))}</span>
-                    <span>${escapeHtml(b.status)} · ${escapeHtml(b.platform)}</span>
-                  </button>`,
-                        )
-                        .join("")
-                    : `<p class="bcc-empty">No upcoming broadcasts.</p>`
-                }
+                ${renderPickList()}
               </div>
-              <button type="button" class="btn btn--secondary" data-open-schedule>Schedule Broadcast</button>
-            </section>`
-              : ""
-          }
-
-          ${
-            phase === "validate" || phase === "prepare"
-              ? `
-            <section>
-              <h3>2–3. Validate & prepare</h3>
-              <p><strong>${escapeHtml(broadcast?.title || "")}</strong> · ${escapeHtml(broadcast?.status || "")}</p>
-              ${renderSteps(steps)}
-              <div class="bcc-workflow__actions">
-                <button type="button" class="btn btn--secondary" data-back-select>Back</button>
-                <button type="button" class="btn btn--primary" data-prepare ${busy ? "disabled" : ""}>${busy ? "Working…" : "Prepare broadcast"}</button>
-              </div>
-            </section>`
-              : ""
-          }
-
-          ${
-            phase === "start"
-              ? `
-            <section>
-              <h3>4. Start OBS streaming</h3>
-              <p>Prepared for <strong>${escapeHtml(broadcast?.title || "")}</strong>. This starts the Desktop OBS stream output for that broadcast.</p>
               ${
-                youtubeIngest
-                  ? `<div class="bcc-workflow__ingest">
-                       <p><strong>YouTube RTMP (paste into OBS → Settings → Stream)</strong></p>
-                       <p>Server: <code>${escapeHtml(youtubeIngest.server_url)}</code></p>
-                       <p>Stream key: <code>${escapeHtml(youtubeIngest.stream_key)}</code></p>
-                       <p class="bcc-empty">Keep this key private. If OBS already uses this destination, you can start streaming now.</p>
+                needsEdit
+                  ? `<div class="bcc-workflow__actions">
+                       <button type="button" class="btn btn--primary" data-edit>Update broadcast</button>
+                       <button type="button" class="btn btn--secondary" data-open-schedule>Schedule Broadcast</button>
                      </div>`
+                  : `<button type="button" class="btn btn--secondary" data-open-schedule>Schedule Broadcast</button>`
+              }
+            </section>`
+              : ""
+          }
+
+          ${
+            phase === "preparing"
+              ? `
+            <section>
+              <h3>Step 2 — Checking readiness…</h3>
+              <p><strong>${escapeHtml(broadcast?.title || "")}</strong></p>
+              ${renderSteps(steps)}
+              <p class="bcc-empty">Validating OBS, destination, and scenes. Keep this dialog open.</p>
+            </section>`
+              : ""
+          }
+
+          ${
+            phase === "ready"
+              ? `
+            <section>
+              <h3>Step 3 — Ready to start</h3>
+              <div class="bcc-workflow__selected">
+                <p><strong>${escapeHtml(broadcast?.title || "")}</strong></p>
+                <p>${escapeHtml(formatWhen(broadcast?.scheduled_at, broadcast?.time_zone))} · ${escapeHtml(broadcast?.platform || "")} · ${escapeHtml(broadcast?.status || "")}</p>
+                ${
+                  watch
+                    ? `<p>YouTube: <a href="${escapeHtml(watch)}" target="_blank" rel="noopener noreferrer">${escapeHtml(watch)}</a></p>`
+                    : broadcast?.platform === "youtube"
+                      ? `<p class="bcc-empty">YouTube link is ready after Start Stream arms the destination.</p>`
+                      : ""
+                }
+                ${renderSteps(steps)}
+                <div class="bcc-workflow__actions">
+                  <button type="button" class="btn btn--primary" data-go-live ${goEnabled ? "" : "disabled"}>
+                    ${busy ? "Working…" : "Start Stream"}
+                  </button>
+                  <button type="button" class="btn btn--secondary" data-clear-select>Change selection</button>
+                  <button type="button" class="btn btn--secondary" data-edit>Edit broadcast</button>
+                </div>
+              </div>
+            </section>`
+              : ""
+          }
+
+          ${
+            phase === "working"
+              ? `
+            <section>
+              <h3>Starting stream…</h3>
+              <p><strong>${escapeHtml(broadcast?.title || "")}</strong></p>
+              ${
+                watch
+                  ? `<p>YouTube: <a href="${escapeHtml(watch)}" target="_blank" rel="noopener noreferrer">${escapeHtml(watch)}</a></p>`
                   : ""
               }
               ${renderSteps(steps)}
-              <div class="bcc-workflow__actions">
-                <button type="button" class="btn btn--primary" data-start-output ${busy ? "disabled" : ""}>${busy ? "Starting…" : "Start OBS streaming"}</button>
-              </div>
-            </section>`
-              : ""
-          }
-
-          ${
-            phase === "ingest"
-              ? `
-            <section>
-              <h3>5. Wait for ingest</h3>
-              <p>${broadcast?.status === "ready_to_go_live" ? "Ready to Go Live" : "Waiting for Video"}</p>
-              ${renderSteps(steps)}
-              ${renderLiveMonitor()}
-              <div class="bcc-workflow__actions">
-                <button type="button" class="btn btn--primary" data-go-live ${!canGoLive || busy ? "disabled" : ""}>Go Live</button>
-                <button type="button" class="btn btn--danger" data-emergency ${busy ? "disabled" : ""}>Emergency Stop</button>
-              </div>
+              <p class="bcc-empty">Arming home OBS and YouTube. Keep this dialog open.</p>
             </section>`
               : ""
           }
@@ -410,6 +467,12 @@ export function createStartWorkflow(dialog, opts) {
               ? `
             <section>
               <h3>Live</h3>
+              <p><strong>${escapeHtml(broadcast?.title || "")}</strong> is live.</p>
+              ${
+                watch
+                  ? `<p>YouTube: <a href="${escapeHtml(watch)}" target="_blank" rel="noopener noreferrer">${escapeHtml(watch)}</a></p>`
+                  : ""
+              }
               ${renderLiveMonitor()}
               <div class="bcc-workflow__actions">
                 <button type="button" class="btn btn--primary" data-end ${busy ? "disabled" : ""}>End Broadcast</button>
@@ -444,27 +507,22 @@ export function createStartWorkflow(dialog, opts) {
       close();
       opts.openSchedule?.();
     });
+    dialog.querySelector("[data-edit]")?.addEventListener("click", () => {
+      openEdit(broadcast?.id);
+    });
     dialog.querySelectorAll("[data-pick]").forEach((btn) => {
       btn.addEventListener("click", () => {
         const id = btn.getAttribute("data-pick");
-        if (id) void selectBroadcast(id);
+        if (id) void selectAndPrepare(id);
       });
     });
     dialog.querySelector("[data-clear-select]")?.addEventListener("click", () => {
       broadcast = null;
+      error = null;
+      steps = [];
       phase = "select";
       render();
     });
-    dialog.querySelector("[data-to-validate]")?.addEventListener("click", () => {
-      phase = "validate";
-      render();
-    });
-    dialog.querySelector("[data-back-select]")?.addEventListener("click", () => {
-      phase = "select";
-      render();
-    });
-    dialog.querySelector("[data-prepare]")?.addEventListener("click", () => void runPrepare());
-    dialog.querySelector("[data-start-output]")?.addEventListener("click", () => void runStartOutput());
     dialog.querySelector("[data-go-live]")?.addEventListener("click", () => void runGoLive());
     dialog.querySelector("[data-end]")?.addEventListener("click", () => void runEnd(false));
     dialog.querySelector("[data-emergency]")?.addEventListener("click", () => void runEnd(true));
@@ -472,10 +530,11 @@ export function createStartWorkflow(dialog, opts) {
 
   return {
     async open() {
-      startIdempotency = null;
       summary = null;
       steps = [];
       error = null;
+      broadcast = null;
+      phase = "select";
       if (typeof dialog.showModal === "function") dialog.showModal();
       try {
         await loadContext();
@@ -484,10 +543,7 @@ export function createStartWorkflow(dialog, opts) {
         phase = "select";
       }
       render();
-      if (phase === "ingest" || phase === "live") {
-        if (phase === "ingest") startIngestPoll();
-        else startLivePoll();
-      }
+      if (phase === "live") startLivePoll();
     },
     close,
   };

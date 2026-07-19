@@ -1,4 +1,5 @@
 import type { Env } from "../index";
+import { youtubeWatchUrlFromExternalId } from "./youtube-live";
 
 export const BROADCAST_STATUSES = [
   "draft",
@@ -40,6 +41,8 @@ export interface ScheduledBroadcast {
   operation_id: string | null;
   workflow_step: string | null;
   external_platform_id: string | null;
+  /** Derived when platform is youtube and Prepare stored YouTube ids. */
+  watch_url: string | null;
   actual_start_at: string | null;
   actual_end_at: string | null;
   error_message: string | null;
@@ -119,6 +122,10 @@ function rowToBroadcast(row: Row): ScheduledBroadcast {
     operation_id: row.operation_id,
     workflow_step: row.workflow_step,
     external_platform_id: row.external_platform_id,
+    watch_url:
+      row.platform === "youtube"
+        ? youtubeWatchUrlFromExternalId(row.external_platform_id)
+        : null,
     actual_start_at: row.actual_start_at,
     actual_end_at: row.actual_end_at,
     error_message: row.error_message,
@@ -143,15 +150,15 @@ const ALLOWED_TRANSITIONS: Record<BroadcastStatus, BroadcastStatus[]> = {
   selected: ["preparing", "scheduled", "cancelled"],
   preparing: ["prepared", "failed", "cancelled"],
   prepared: ["starting_output", "selected", "failed", "cancelled"],
-  starting_output: ["waiting_for_ingest", "failed"],
+  starting_output: ["waiting_for_ingest", "failed", "ready_to_go_live"],
   waiting_for_ingest: ["ready_to_go_live", "failed"],
   ready_to_go_live: ["going_live", "failed", "ending"],
-  going_live: ["live", "failed"],
+  going_live: ["live", "failed", "ready_to_go_live"],
   live: ["ending", "failed"],
   ending: ["completed", "failed"],
   completed: [],
   cancelled: [],
-  failed: ["scheduled", "selected", "cancelled"],
+  failed: ["scheduled", "selected", "cancelled", "waiting_for_ingest", "ready_to_go_live", "prepared", "going_live"],
 };
 
 export function canTransition(from: BroadcastStatus, to: BroadcastStatus): boolean {
@@ -251,8 +258,8 @@ export async function createScheduledBroadcast(
       input.description?.trim() || null,
       input.scheduled_at!,
       input.time_zone || "America/Chicago",
-      input.platform || "obs",
-      input.visibility || "private",
+      input.platform || "youtube",
+      input.visibility || "public",
       input.expected_duration_minutes ?? null,
       input.auto_start ? 1 : 0,
       input.auto_stop ? 1 : 0,

@@ -51,6 +51,17 @@ function optionalInt(name: string, value: string | undefined, fallback: number):
   return parsed;
 }
 
+function optionalNonNegativeInt(name: string, value: string | undefined, fallback: number): number {
+  if (!value?.trim()) {
+    return fallback;
+  }
+  const parsed = Number.parseInt(value, 10);
+  if (!Number.isFinite(parsed) || parsed < 0) {
+    throw new Error(`Invalid integer for ${name}: ${value}`);
+  }
+  return parsed;
+}
+
 export function loadConfig(env: NodeJS.ProcessEnv = process.env): ListenerConfig {
   return {
     listenerHost: env.LISTENER_HOST?.trim() || "127.0.0.1",
@@ -61,5 +72,10 @@ export function loadConfig(env: NodeJS.ProcessEnv = process.env): ListenerConfig
     obsPassword: env.OBS_PASSWORD?.trim() || "",
     obsReconnectMs: optionalInt("OBS_RECONNECT_MS", env.OBS_RECONNECT_MS, 3000),
     platformBaseUrl: (env.PLATFORM_BASE_URL || env.WORKER_BASE_URL || "").trim().replace(/\/$/, ""),
+    overlayBrowserRefreshMs: optionalNonNegativeInt(
+      "OVERLAY_BROWSER_REFRESH_MS",
+      env.OVERLAY_BROWSER_REFRESH_MS,
+      300_000,
+    ),
   };
 }

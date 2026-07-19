@@ -40,6 +40,9 @@ export const RADAR_WRITABLE_KEYS = [
   "overlay_radar_opacity",
   "overlay_radar_map_style",
   "overlay_radar_show_city",
+  "overlay_radar_show_cities",
+  "overlay_radar_show_highways",
+  "overlay_radar_show_hud",
   "overlay_radar_show_coords",
   "overlay_radar_show_status",
   "overlay_radar_show_updated",
@@ -54,6 +57,9 @@ const DEFAULTS: Record<(typeof RADAR_WRITABLE_KEYS)[number], string> = {
   overlay_radar_opacity: "0.65",
   overlay_radar_map_style: "dark",
   overlay_radar_show_city: "1",
+  overlay_radar_show_cities: "1",
+  overlay_radar_show_highways: "1",
+  overlay_radar_show_hud: "1",
   overlay_radar_show_coords: "1",
   overlay_radar_show_status: "1",
   overlay_radar_show_updated: "1",
@@ -115,6 +121,9 @@ export interface RadarOverlaySettings {
   opacity: number;
   map_style: "dark" | "streets" | "satellite";
   show_city: boolean;
+  show_cities: boolean;
+  show_highways: boolean;
+  show_hud: boolean;
   show_coords: boolean;
   show_status: boolean;
   show_updated: boolean;
@@ -159,10 +168,13 @@ export async function getRadarOverlaySettings(env: Env): Promise<RadarOverlaySet
     polling_interval_sec: Math.round(
       asNumber(raw.overlay_radar_polling_interval_sec, 300, 60, 3600),
     ),
-    zoom: Math.round(asNumber(raw.overlay_radar_zoom, 8, 3, 16)),
+    zoom: Math.round(asNumber(raw.overlay_radar_zoom, 8, 4, 15)),
     opacity: asNumber(raw.overlay_radar_opacity, 0.65, 0.1, 1),
     map_style,
     show_city: asBool(raw.overlay_radar_show_city, true),
+    show_cities: asBool(raw.overlay_radar_show_cities, true),
+    show_highways: asBool(raw.overlay_radar_show_highways, true),
+    show_hud: asBool(raw.overlay_radar_show_hud, true),
     show_coords: asBool(raw.overlay_radar_show_coords, true),
     show_status: asBool(raw.overlay_radar_show_status, true),
     show_updated: asBool(raw.overlay_radar_show_updated, true),
@@ -190,7 +202,7 @@ export async function updateRadarOverlaySettings(
       continue;
     }
     if (key === "overlay_radar_zoom") {
-      await writeSetting(env, key, String(Math.round(asNumber(value, 8, 3, 16))));
+      await writeSetting(env, key, String(Math.round(asNumber(value, 8, 4, 15))));
       continue;
     }
     if (key === "overlay_radar_opacity") {
@@ -294,14 +306,17 @@ export async function buildRadarOverlayData(env: Env) {
     frames,
     animation_enabled: settings.polling_enabled && frames.length > 1,
     wms: {
-      url: NEXRAD_BASE_REFLECTIVITY_WMST.proxyPath,
-      upstream: NEXRAD_BASE_REFLECTIVITY_WMST.upstreamUrl,
+      // Load tiles directly from IEM — proxying every animated tile through the Worker
+      // exhausts the Workers Free 100k/day request limit (seen as HTTP 429 / offline).
+      url: NEXRAD_BASE_REFLECTIVITY_WMST.upstreamUrl,
       layers: NEXRAD_BASE_REFLECTIVITY_WMST.layers,
       format: NEXRAD_BASE_REFLECTIVITY_WMST.format,
       transparent: NEXRAD_BASE_REFLECTIVITY_WMST.transparent,
       version: NEXRAD_BASE_REFLECTIVITY_WMST.version,
       attribution: NEXRAD_BASE_REFLECTIVITY_WMST.attribution,
       time_enabled: true,
+      /** Optional Worker proxy path (kept for debugging; not used by the overlay). */
+      proxy_path: NEXRAD_BASE_REFLECTIVITY_WMST.proxyPath,
     },
     last_refresh_at: cache?.refreshed_at || null,
     next_refresh_at: nextRefreshAt,

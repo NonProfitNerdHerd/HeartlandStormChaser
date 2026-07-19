@@ -132,7 +132,7 @@ async function handlePutOverlaySettings(request: Request, env: Env): Promise<Res
     return errorResponse("overlay_target_city is too long");
   }
 
-  if ("overlay_ticker_text" in updates && updates.overlay_ticker_text.length > 500) {
+  if ("overlay_ticker_text" in updates && updates.overlay_ticker_text.length > 1500) {
     return errorResponse("overlay_ticker_text is too long");
   }
 

@@ -3,6 +3,7 @@ import {
   findDeviceByToken,
   generateDeviceToken,
   hashToken,
+  verifyHomeGpsBridgeToken,
   verifyPairingPin,
 } from "../lib/gps-auth";
 import { maybeRecordChasePointFromGpsUpdate } from "../lib/chase-points";
@@ -468,6 +469,53 @@ async function handleLatestActive(env: Env): Promise<Response> {
   });
 }
 
+const MPH_TO_MPS = 0.44704;
+
+async function handleHomeBridge(request: Request, env: Env): Promise<Response> {
+  if (!env.HOME_GPS_BRIDGE_TOKEN?.trim()) {
+    return errorResponse("Home GPS bridge token is not configured", 503);
+  }
+
+  const token = extractBearerToken(request);
+  if (!token || !verifyHomeGpsBridgeToken(env, token)) {
+    return errorResponse("Unauthorized", 401);
+  }
+
+  const platform = await getPlatformSource(env);
+  if (!platform?.location) {
+    return json({
+      ok: false,
+      active: false,
+      message: platform
+        ? "Platform GPS source has no location yet"
+        : "No platform GPS source selected",
+    });
+  }
+
+  const location = platform.location;
+  const speedMps =
+    location.speed_mph == null || Number.isNaN(location.speed_mph)
+      ? null
+      : location.speed_mph * MPH_TO_MPS;
+
+  return json({
+    ok: true,
+    active: true,
+    latitude: location.latitude,
+    longitude: location.longitude,
+    altitudeMeters: location.altitude_meters,
+    accuracyMeters: location.accuracy_meters,
+    speedMps,
+    headingDegrees: location.heading_degrees,
+    capturedAt: location.timestamp_utc,
+    receivedAt: location.received_at_utc,
+    sourceId: platform.device_id,
+    sourceName: platform.device_name,
+    status: location.status,
+    valid: location.status === "LIVE",
+  });
+}
+
 async function handleGetPlatform(env: Env): Promise<Response> {
   const device = await env.DB.prepare(
     `SELECT id, device_name, is_platform_source, enabled, last_seen_at,
@@ -565,6 +613,10 @@ export async function handleGps(request: Request, env: Env): Promise<Response> {
 
     if (pathname === "/api/gps/latest-active" && method === "GET") {
       return handleLatestActive(env);
+    }
+
+    if (pathname === "/api/gps/home-bridge" && method === "GET") {
+      return handleHomeBridge(request, env);
     }
 
     if (pathname === "/api/gps/platform" && method === "GET") {

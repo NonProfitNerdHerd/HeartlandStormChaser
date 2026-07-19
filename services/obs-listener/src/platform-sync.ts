@@ -3,6 +3,7 @@ import type { EventLog } from "./event-log.js";
 import type { ListenerConfig } from "./types.js";
 
 const SYNC_INTERVAL_MS = 15_000;
+const SYNC_BACKOFF_MAX_MS = 5 * 60_000;
 
 export function startPlatformConfigSync(
   config: ListenerConfig,
@@ -21,6 +22,7 @@ export function startPlatformConfigSync(
   let stopped = false;
   let timer: ReturnType<typeof setTimeout> | null = null;
   let lastUpdatedAt: string | null = null;
+  let nextDelayMs = SYNC_INTERVAL_MS;
 
   const tick = async () => {
     if (stopped) {
@@ -35,10 +37,22 @@ export function startPlatformConfigSync(
         signal: AbortSignal.timeout(8_000),
       });
 
+      if (response.status === 429) {
+        nextDelayMs = Math.min(SYNC_BACKOFF_MAX_MS, Math.max(nextDelayMs * 2, 60_000));
+        events.push(
+          "listener",
+          `Platform settings sync rate-limited (429); backing off ${Math.round(nextDelayMs / 1000)}s`,
+          "warning",
+        );
+        return;
+      }
+
       if (!response.ok) {
         const text = await response.text();
         throw new Error(`agent-config HTTP ${response.status}: ${text.slice(0, 160)}`);
       }
+
+      nextDelayMs = SYNC_INTERVAL_MS;
 
       const data = (await response.json()) as {
         ok?: boolean;
@@ -79,6 +93,7 @@ export function startPlatformConfigSync(
       const message = error instanceof Error ? error.message : String(error);
       console.error("[obs-listener] platform sync:", message);
       events.push("listener", `Platform settings sync failed: ${message}`, "warning");
+      nextDelayMs = Math.min(SYNC_BACKOFF_MAX_MS, Math.max(nextDelayMs * 2, 30_000));
     }
   };
 
@@ -89,7 +104,7 @@ export function startPlatformConfigSync(
           schedule();
         }
       });
-    }, SYNC_INTERVAL_MS);
+    }, nextDelayMs);
   };
 
   void tick().finally(schedule);

@@ -12,7 +12,7 @@ export function generateDeviceToken(): string {
   return crypto.randomUUID().replace(/-/g, "") + crypto.randomUUID().replace(/-/g, "");
 }
 
-function timingSafeEqual(a: string, b: string): boolean {
+export function timingSafeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) {
     return false;
   }
@@ -30,6 +30,15 @@ export function verifyPairingPin(env: Env, pin: string): boolean {
     return false;
   }
   return timingSafeEqual(pin.trim(), expected);
+}
+
+/** Returns true when the provided bearer token matches HOME_GPS_BRIDGE_TOKEN. */
+export function verifyHomeGpsBridgeToken(env: Env, token: string): boolean {
+  const expected = env.HOME_GPS_BRIDGE_TOKEN?.trim();
+  if (!expected || !token) {
+    return false;
+  }
+  return timingSafeEqual(token.trim(), expected);
 }
 
 export function extractBearerToken(request: Request): string | null {

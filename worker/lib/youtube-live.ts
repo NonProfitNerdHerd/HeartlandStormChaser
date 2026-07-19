@@ -287,6 +287,13 @@ export function parseYoutubePlatformIds(raw: string | null): YoutubePlatformIds 
   return null;
 }
 
+/** Public watch URL for a stored YouTube platform id payload (null if not YouTube / not prepared). */
+export function youtubeWatchUrlFromExternalId(raw: string | null | undefined): string | null {
+  const ids = parseYoutubePlatformIds(raw ?? null);
+  if (!ids?.broadcastId) return null;
+  return `https://www.youtube.com/watch?v=${ids.broadcastId}`;
+}
+
 export function serializeYoutubePlatformIds(ids: YoutubePlatformIds): string {
   return JSON.stringify(ids);
 }
@@ -414,7 +421,7 @@ export async function prepareYoutubeLiveBroadcast(
 export async function getYoutubeStreamActive(
   env: Env,
   streamId: string,
-): Promise<{ active: boolean; status: string }> {
+): Promise<{ active: boolean; status: string; ingestOk: boolean }> {
   const data = (await youtubeFetch(env, "/liveStreams", {
     method: "GET",
     query: { part: "status", id: streamId },
@@ -422,9 +429,11 @@ export async function getYoutubeStreamActive(
     items?: Array<{ status?: { streamStatus?: string } }>;
   };
   const status = data.items?.[0]?.status?.streamStatus || "unknown";
+  // "active" = receiving data. "ready" = bound and able to receive — treat as OK once OBS is streaming.
   return {
     active: status === "active",
     status,
+    ingestOk: status === "active" || status === "ready",
   };
 }
 

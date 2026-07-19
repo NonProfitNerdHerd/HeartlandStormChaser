@@ -29,6 +29,8 @@ export interface Env {
   /** Optional override; defaults to {origin}/api/broadcast/youtube/oauth/callback */
   YOUTUBE_REDIRECT_URI?: string;
   GPS_PAIRING_PIN?: string;
+  /** Bearer token for the Windows Home GPS Bridge (machine-to-machine). */
+  HOME_GPS_BRIDGE_TOKEN?: string;
   WEB_AUTH_BOOTSTRAP_PASSWORD?: string;
   /** Base URL of the local OBS listener (e.g. Cloudflare Tunnel or LAN via tunnel). */
   OBS_LISTENER_URL?: string;

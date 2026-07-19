@@ -1,13 +1,16 @@
 /**
  * Keeps Truck Front / Truck Dash VDO publishers alive across site navigation.
  * Runs on non-Broadcast pages (and as a fallback) when a dock session is active.
+ * Only publishes cameras present/visible in the active OBS program scene.
  */
 import {
   DOCK_CAMERAS,
   buildVdoPublisherUrl,
   defaultSettings,
+  isDockCameraNeededInScene,
   listVideoDevices,
   loadStoredDeviceId,
+  loadStoredMicLabel,
   loadStoredMuted,
   loadStoredSessionActive,
   isPublisherWindowAlive,
@@ -21,6 +24,7 @@ const HOST_ID = "hsc-camera-persist";
 const WATCHDOG_MS = 8000;
 const OBS_LOST_RESTART_MS = 15000;
 const NETWORK_BACK_MS = 2500;
+const SCENE_PAUSE_DEBOUNCE_MS = 1500;
 
 function ensureHost() {
   let host = document.getElementById(HOST_ID);
@@ -47,7 +51,8 @@ function isBroadcastControlPage() {
  */
 function upsertPublisherIframe(host, camera, deviceLabel, muted) {
   const settings = defaultSettings(camera.targetBitrateKbps);
-  const url = buildVdoPublisherUrl(camera.pushUrl, deviceLabel, settings, muted);
+  const audioLabel = muted ? null : loadStoredMicLabel() || null;
+  const url = buildVdoPublisherUrl(camera.pushUrl, deviceLabel, settings, muted, audioLabel);
   let iframe = host.querySelector(`[data-persist-role="${camera.role}"]`);
   if (!(iframe instanceof HTMLIFrameElement)) {
     iframe = document.createElement("iframe");
@@ -63,6 +68,18 @@ function upsertPublisherIframe(host, camera, deviceLabel, muted) {
     iframe.src = url;
   }
   return { iframe, url };
+}
+
+/**
+ * @param {HTMLElement} host
+ * @param {string} role
+ */
+function blankPublisherIframe(host, role) {
+  const iframe = host.querySelector(`[data-persist-role="${role}"]`);
+  if (!(iframe instanceof HTMLIFrameElement)) return null;
+  iframe.setAttribute("data-current-src", "about:blank");
+  iframe.src = "about:blank";
+  return iframe;
 }
 
 async function resolveDeviceLabel(deviceId) {
@@ -97,35 +114,113 @@ export function startCameraDockPersist() {
   }
 
   const host = ensureHost();
-  /** @type {Record<string, { url: string, iframe: HTMLIFrameElement, obsLostSince: number | null }>} */
+  /** @type {Record<string, { url: string | null, iframe: HTMLIFrameElement | null, obsLostSince: number | null, scenePaused: boolean }>} */
   const slots = {};
+  /** @type {Record<string, boolean>} */
+  const neededByRole = Object.fromEntries(DOCK_CAMERAS.map((camera) => [camera.role, true]));
+  /** @type {Record<string, number>} */
+  const scenePauseTimers = {};
   let destroyed = false;
   let watchdogTimer = 0;
   let restarting = false;
   let onlineTimer = 0;
+
+  function clearScenePauseTimer(role) {
+    if (scenePauseTimers[role]) {
+      window.clearTimeout(scenePauseTimers[role]);
+      scenePauseTimers[role] = 0;
+    }
+  }
+
+  async function startRole(camera, reason = "start") {
+    const deviceId = loadStoredDeviceId(camera.role);
+    if (!deviceId) {
+      blankPublisherIframe(host, camera.role);
+      delete slots[camera.role];
+      return;
+    }
+    if (!neededByRole[camera.role]) {
+      blankPublisherIframe(host, camera.role);
+      slots[camera.role] = {
+        url: null,
+        iframe: host.querySelector(`[data-persist-role="${camera.role}"]`),
+        obsLostSince: null,
+        scenePaused: true,
+      };
+      return;
+    }
+
+    const muted = loadStoredMuted(camera.role);
+    const deviceLabel = await resolveDeviceLabel(deviceId);
+    const { iframe, url } = upsertPublisherIframe(host, camera, deviceLabel, muted);
+    slots[camera.role] = {
+      url,
+      iframe,
+      obsLostSince: slots[camera.role]?.obsLostSince ?? null,
+      scenePaused: false,
+    };
+    if (reason === "restart") {
+      reloadPublisherIframe(iframe, url);
+    }
+  }
 
   async function startAll(reason = "start") {
     if (destroyed || restarting) return;
     restarting = true;
     try {
       for (const camera of DOCK_CAMERAS) {
-        const deviceId = loadStoredDeviceId(camera.role);
-        if (!deviceId) continue;
-        const muted = loadStoredMuted(camera.role);
-        const deviceLabel = await resolveDeviceLabel(deviceId);
-        const { iframe, url } = upsertPublisherIframe(host, camera, deviceLabel, muted);
-        slots[camera.role] = {
-          url,
-          iframe,
-          obsLostSince: slots[camera.role]?.obsLostSince ?? null,
-        };
-        if (reason === "restart") {
-          reloadPublisherIframe(iframe, url);
-        }
+        await startRole(camera, reason);
+        await new Promise((r) => window.setTimeout(r, 400));
       }
-      scheduleObsBrowserRefresh(["truck_front", "truck_dash"]);
+      const matchers = DOCK_CAMERAS.filter((camera) => neededByRole[camera.role]).flatMap(
+        (camera) => camera.obsSourceMatchers,
+      );
+      if (matchers.length) {
+        scheduleObsBrowserRefresh(matchers);
+      }
     } finally {
       restarting = false;
+    }
+  }
+
+  function applySceneNeeds(nextNeeded) {
+    /** @type {typeof DOCK_CAMERAS} */
+    const toStart = [];
+    DOCK_CAMERAS.forEach((camera) => {
+      const needed = nextNeeded[camera.role] !== false;
+      const wasNeeded = neededByRole[camera.role] !== false;
+      neededByRole[camera.role] = needed;
+
+      if (needed && !wasNeeded) {
+        clearScenePauseTimer(camera.role);
+        toStart.push(camera);
+        return;
+      }
+
+      if (!needed && wasNeeded) {
+        if (scenePauseTimers[camera.role]) return;
+        scenePauseTimers[camera.role] = window.setTimeout(() => {
+          scenePauseTimers[camera.role] = 0;
+          if (neededByRole[camera.role] || destroyed) return;
+          blankPublisherIframe(host, camera.role);
+          slots[camera.role] = {
+            url: null,
+            iframe: host.querySelector(`[data-persist-role="${camera.role}"]`),
+            obsLostSince: null,
+            scenePaused: true,
+          };
+        }, SCENE_PAUSE_DEBOUNCE_MS);
+      }
+    });
+
+    if (toStart.length) {
+      void (async () => {
+        for (const camera of toStart) {
+          if (destroyed) return;
+          await startRole(camera, "restart");
+          await new Promise((r) => window.setTimeout(r, 400));
+        }
+      })();
     }
   }
 
@@ -140,17 +235,39 @@ export function startCameraDockPersist() {
       const obsConnected = Boolean(data?.listener?.obsConnected);
       const now = Date.now();
 
+      /** @type {Record<string, boolean>} */
+      const nextNeeded = {};
+      DOCK_CAMERAS.forEach((camera) => {
+        nextNeeded[camera.role] = isDockCameraNeededInScene(
+          sources,
+          camera.obsSourceMatchers,
+          obsConnected,
+        );
+      });
+      const needsChanged = DOCK_CAMERAS.some(
+        (camera) => Boolean(neededByRole[camera.role]) !== Boolean(nextNeeded[camera.role]),
+      );
+      if (needsChanged) {
+        applySceneNeeds(nextNeeded);
+      }
+
       for (const camera of DOCK_CAMERAS) {
         const slot = slots[camera.role];
-        if (!slot) continue;
+        if (!slot?.url || slot.scenePaused || !neededByRole[camera.role]) {
+          if (slot) slot.obsLostSince = null;
+          continue;
+        }
         const status = resolveObsReceiveStatus(sources, camera.obsSourceMatchers, obsConnected);
-        if (status === "lost" || status === "unknown") {
+        // Only soft-restart when the scene needs this camera but OBS is not receiving.
+        if (status === "lost") {
           if (slot.obsLostSince == null) {
             slot.obsLostSince = now;
           } else if (now - slot.obsLostSince >= OBS_LOST_RESTART_MS) {
             slot.obsLostSince = now;
-            reloadPublisherIframe(slot.iframe, slot.url);
-            scheduleObsBrowserRefresh(camera.obsSourceMatchers);
+            if (slot.iframe && slot.url) {
+              reloadPublisherIframe(slot.iframe, slot.url);
+              scheduleObsBrowserRefresh(camera.obsSourceMatchers);
+            }
           }
         } else {
           slot.obsLostSince = null;
@@ -174,7 +291,7 @@ export function startCameraDockPersist() {
     }
   }
 
-  void startAll("start");
+  void pollObsAndWatchdog().then(() => startAll("start"));
   watchdogTimer = window.setInterval(() => {
     void pollObsAndWatchdog();
   }, WATCHDOG_MS);
@@ -187,6 +304,7 @@ export function startCameraDockPersist() {
       destroyed = true;
       if (watchdogTimer) window.clearInterval(watchdogTimer);
       if (onlineTimer) window.clearTimeout(onlineTimer);
+      DOCK_CAMERAS.forEach((camera) => clearScenePauseTimer(camera.role));
       window.removeEventListener("online", onOnline);
       document.removeEventListener("visibilitychange", onVisibility);
       host.replaceChildren();

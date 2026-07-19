@@ -358,12 +358,172 @@ export class ObsController {
     return refreshed;
   }
 
-  async startStream(): Promise<void> {
+  /**
+   * Hard-reload every OBS Browser Source whose URL points at an /overlays/ page.
+   * Scans all inputs (not only the active scene) so nested/global overlays stay fresh.
+   */
+  async refreshOverlayBrowserSources(): Promise<string[]> {
     this.assertConnected();
-    await this.obs.call("StartStream");
-    this.events.push("stream", "Start stream requested", "information");
+    const list = await this.obs.call("GetInputList");
+    const refreshed: string[] = [];
+    const seen = new Set<string>();
+
+    for (const input of list.inputs ?? []) {
+      const name = String(input.inputName ?? "").trim();
+      const kind = String(input.inputKind ?? "").toLowerCase();
+      if (!name || seen.has(name)) {
+        continue;
+      }
+      if (kind && !kind.includes("browser")) {
+        continue;
+      }
+
+      let url = "";
+      try {
+        const current = await this.obs.call("GetInputSettings", { inputName: name });
+        const settings = (current.inputSettings || {}) as Record<string, unknown>;
+        url = typeof settings.url === "string" ? settings.url : "";
+      } catch {
+        continue;
+      }
+
+      if (!isOverlayBrowserUrl(url)) {
+        continue;
+      }
+
+      seen.add(name);
+      try {
+        await this.refreshBrowserSource(name);
+        refreshed.push(name);
+      } catch (error) {
+        this.captureError(`refreshOverlayBrowserSources(${name})`, error);
+      }
+    }
+
+    return refreshed;
+  }
+
+  /**
+   * Read current OBS stream service (never returns the stream key).
+   */
+  async getStreamServiceInfo(): Promise<{
+    streamServiceType: string;
+    server: string | null;
+    isCustomRtmp: boolean;
+  }> {
+    this.assertConnected();
+    const current = await this.obs.call("GetStreamServiceSettings");
+    const type = String(current.streamServiceType || "");
+    const settings =
+      current.streamServiceSettings && typeof current.streamServiceSettings === "object"
+        ? (current.streamServiceSettings as Record<string, unknown>)
+        : {};
+    const server = typeof settings.server === "string" ? settings.server : null;
+    return {
+      streamServiceType: type,
+      server,
+      isCustomRtmp: type === "rtmp_custom",
+    };
+  }
+
+  /**
+   * Point OBS at a custom RTMP destination (e.g. YouTube Live ingest).
+   * Must be called while not actively streaming.
+   * Throws if OBS does not report rtmp_custom afterward (YouTube service would open Manage Broadcast).
+   */
+  async setCustomRtmpDestination(server: string, key: string): Promise<{
+    streamServiceType: string;
+    server: string;
+    verified: true;
+  }> {
+    this.assertConnected();
+    const parsed = parseCustomRtmpDestination(server, key);
     await this.refreshStreamRecord();
+    if (this.streamingActive) {
+      // Stop first so we can safely switch off YouTube service → Custom.
+      try {
+        await this.obs.call("StopStream");
+        await this.refreshStreamRecord();
+      } catch {
+        /* may already be stopped */
+      }
+      if (this.streamingActive) {
+        throw new Error("Cannot change OBS stream destination while streaming is active");
+      }
+    }
+
+    await this.obs.call("SetStreamServiceSettings", {
+      streamServiceType: "rtmp_custom",
+      streamServiceSettings: {
+        server: parsed.server,
+        key: parsed.key,
+        use_auth: false,
+      },
+    });
+
+    // Small settle — OBS sometimes reports the previous service type immediately.
+    await new Promise((r) => setTimeout(r, 400));
+
+    const info = await this.getStreamServiceInfo();
+    if (!info.isCustomRtmp) {
+      throw new Error(
+        `OBS stream service is "${info.streamServiceType || "unknown"}" after set — expected Custom RTMP (rtmp_custom). ` +
+          "Close any YouTube Manage Broadcast dialog, set Settings → Stream → Custom, then retry.",
+      );
+    }
+
+    const appliedServer = info.server || parsed.server;
+    this.events.push(
+      "stream",
+      `OBS stream destination verified custom RTMP (${appliedServer})`,
+      "success",
+    );
     this.touch();
+    return {
+      streamServiceType: info.streamServiceType,
+      server: appliedServer,
+      verified: true,
+    };
+  }
+
+  /**
+   * Start streaming only when OBS is on Custom RTMP — avoids YouTube Manage Broadcast spam.
+   */
+  async startStream(): Promise<{ streamingActive: boolean; streamServiceType: string }> {
+    this.assertConnected();
+    await this.refreshStreamRecord();
+    if (this.streamingActive) {
+      const info = await this.getStreamServiceInfo();
+      return { streamingActive: true, streamServiceType: info.streamServiceType };
+    }
+
+    const info = await this.getStreamServiceInfo();
+    if (!info.isCustomRtmp) {
+      throw new Error(
+        `Refusing StartStream: OBS service is "${info.streamServiceType || "unknown"}" (not Custom RTMP). ` +
+          "That opens Manage Broadcast. Apply YouTube RTMP via the platform first.",
+      );
+    }
+
+    await this.obs.call("StartStream");
+    this.events.push("stream", "Start stream requested (custom RTMP verified)", "information");
+
+    // Poll briefly for outputActive — do not call StartStream again here.
+    for (let i = 0; i < 8; i += 1) {
+      await new Promise((r) => setTimeout(r, 500));
+      await this.refreshStreamRecord();
+      if (this.streamingActive) break;
+    }
+
+    this.touch();
+    if (!this.streamingActive) {
+      throw new Error(
+        "OBS StartStream was sent (Custom RTMP) but streaming did not become active. " +
+          "Dismiss any OBS dialogs on the home PC and retry Go Live once.",
+      );
+    }
+
+    return { streamingActive: true, streamServiceType: info.streamServiceType };
   }
 
   async stopStream(): Promise<void> {
@@ -373,7 +533,6 @@ export class ObsController {
     await this.refreshStreamRecord();
     this.touch();
   }
-
   async startRecord(): Promise<void> {
     this.assertConnected();
     await this.obs.call("StartRecord");
@@ -614,6 +773,40 @@ function emptyStats(): ObsStatsSnapshot {
 
 function numberOrNull(value: unknown): number | null {
   return typeof value === "number" && Number.isFinite(value) ? value : null;
+}
+
+export function isOverlayBrowserUrl(url: string): boolean {
+  const raw = String(url || "").trim();
+  if (!raw) {
+    return false;
+  }
+  try {
+    return new URL(raw).pathname.toLowerCase().includes("/overlays/");
+  } catch {
+    return raw.toLowerCase().includes("/overlays/");
+  }
+}
+
+/** Validate custom RTMP server URL + stream key for SetStreamServiceSettings. */
+export function parseCustomRtmpDestination(server: string, key: string): {
+  server: string;
+  key: string;
+} {
+  const normalizedServer = String(server || "").trim();
+  const normalizedKey = String(key || "").trim();
+  if (!normalizedServer) {
+    throw new Error("RTMP server URL is required");
+  }
+  if (!/^rtmps?:\/\//i.test(normalizedServer)) {
+    throw new Error("RTMP server URL must start with rtmp:// or rtmps://");
+  }
+  if (!normalizedKey) {
+    throw new Error("RTMP stream key is required");
+  }
+  if (normalizedKey.length > 512) {
+    throw new Error("RTMP stream key is too long");
+  }
+  return { server: normalizedServer, key: normalizedKey };
 }
 
 export function sanitizeName(value: string, label: string): string {

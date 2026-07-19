@@ -1,6 +1,6 @@
 import { BroadcastApi } from "./api.js";
 import { createCameraDock } from "./camera-dock.js";
-import { renderHeader, renderHealthCards } from "./header.js";
+import { renderHeader, renderHealthCards, renderStatusBanner } from "./header.js";
 import { renderSceneSwitcher, renderSources } from "./scenes-sources.js";
 import {
   renderEventLog,
@@ -129,10 +129,14 @@ function renderVdoPanel(force = false) {
   );
 }
 
+function getCameraBannerIssue() {
+  return cameraDock?.getBannerIssue?.() ?? null;
+}
+
 function renderAll() {
   if (!root || state.destroyed) return;
 
-  renderHeader(root, state);
+  renderHeader(root, state, getCameraBannerIssue);
   renderHealthCards(root.querySelector("[data-bcc-health]"), state.data?.health || []);
   renderSceneSwitcher(root.querySelector("[data-bcc-scenes]"), state, activateScene);
   renderSources(root.querySelector("[data-bcc-sources]"), state, {
@@ -151,24 +155,30 @@ function renderAll() {
     stopStream,
     startRecording,
     stopRecording,
-    reconnect,
-    refresh,
     scheduleBroadcast: () => scheduleModal?.open(),
     openStartWorkflow: () => void startWorkflow?.open(),
     hasActiveWorkflow,
     allowCameras: () => {
       void cameraDock?.requestPermission?.();
     },
-    openPublisherWindow: () => {
-      const opened = cameraDock?.openPublisherWindow?.();
-      if (opened) {
-        pushLocalEvent(
-          "dock",
-          "Camera publisher window opened — leave it open while browsing other pages",
-          "success",
-        );
+    openCameraMonitor: () => {
+      const win = window.open(
+        "/broadcast/monitor/",
+        "hsc_camera_monitor",
+        "popup=yes,width=1280,height=800,menubar=no,toolbar=no,location=no,status=no",
+      );
+      if (win) {
+        try {
+          win.focus();
+        } catch {
+          /* ignore */
+        }
+        pushLocalEvent("dock", "Camera monitor opened", "information");
         renderEventLog(root.querySelector("[data-bcc-events]"), state.eventLog);
+        return;
       }
+      // Popup blocked — open in the same tab.
+      window.location.href = "/broadcast/monitor/";
     },
   });
   renderTelemetry(root.querySelector("[data-bcc-telemetry]"), state.data?.telemetry);
@@ -484,12 +494,39 @@ function destroy() {
 
 window.addEventListener("pagehide", destroy);
 
+function bindHeaderActions() {
+  if (!root) return;
+
+  const bindAction = (selector, fn) => {
+    const el = root.querySelector(selector);
+    if (!el || el.dataset.bccBound) return;
+    el.dataset.bccBound = "1";
+    el.addEventListener("click", () => {
+      if (state.controlBusy) return;
+      fn();
+    });
+    el.addEventListener("keydown", (event) => {
+      if (event.key !== "Enter" && event.key !== " ") return;
+      event.preventDefault();
+      if (state.controlBusy) return;
+      fn();
+    });
+  };
+
+  bindAction("[data-bcc-badge-listener]", () => reconnect());
+  bindAction("[data-bcc-badge-obs]", () => refresh(true));
+}
+
 async function init() {
   if (!root) return;
   cameraDock = createCameraDock(root.querySelector("[data-bcc-camera-dock]"), () => ({
     sources: state.data?.listener?.sources || [],
     obsConnected: Boolean(state.data?.listener?.obsConnected),
-  }));
+  }), {
+    onStatusChange: () => {
+      renderStatusBanner(state, getCameraBannerIssue);
+    },
+  });
   scheduleModal = createScheduleModal(document.getElementById("bcc-schedule-dialog"), {
     scenes: [],
     onSelected: () => {
@@ -498,13 +535,20 @@ async function init() {
   });
   startWorkflow = createStartWorkflow(document.getElementById("bcc-start-workflow-dialog"), {
     getStatus: () => state.data,
-    openSchedule: () => scheduleModal?.open(),
+    openSchedule: (broadcastId) => {
+      void scheduleModal?.open(broadcastId ? { broadcastId } : {});
+    },
     onChanged: () => {
       void refresh(true);
     },
   });
   bindTabs();
+  bindHeaderActions();
   pushLocalEvent("ui", "Broadcast Control Center loaded", "information");
+  // Dock also prompts on create; this covers late mounts / denied-then-retry flows.
+  window.setTimeout(() => {
+    void cameraDock?.requestPermission?.();
+  }, 250);
   const youtubeParam = new URLSearchParams(window.location.search).get("youtube");
   if (youtubeParam === "connected") {
     state.settingsMessage = "YouTube connected successfully.";

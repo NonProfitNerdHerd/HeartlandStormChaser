@@ -189,6 +189,31 @@ data class ChaseVoidResult(
     val error: String? = null,
 )
 
+data class ScheduledBroadcastSummary(
+    val id: String,
+    val title: String,
+    val description: String,
+    val scheduledAt: String,
+    val timeZone: String,
+    val platform: String,
+    val visibility: String,
+    val expectedDurationMinutes: Int?,
+    val status: String,
+    val watchUrl: String?,
+)
+
+data class ScheduledBroadcastResult(
+    val success: Boolean,
+    val broadcast: ScheduledBroadcastSummary? = null,
+    val error: String? = null,
+)
+
+data class ScheduledBroadcastListResult(
+    val success: Boolean,
+    val broadcasts: List<ScheduledBroadcastSummary> = emptyList(),
+    val error: String? = null,
+)
+
 class GpsApiClient(
     private val serverUrl: String,
     private val deviceToken: String? = null,
@@ -455,6 +480,50 @@ class GpsApiClient(
             val chaseJson = json.optJSONObject("chase")
                 ?: return@postJson ChaseResult(success = false, error = "Chase missing from response")
             ChaseResult(success = true, chase = parseChaseSummary(chaseJson))
+        }
+    }
+
+    fun listScheduledBroadcasts(fromIso: String, toIso: String): ScheduledBroadcastListResult {
+        val path = "/api/broadcast/scheduled?from=${java.net.URLEncoder.encode(fromIso, Charsets.UTF_8.name())}" +
+            "&to=${java.net.URLEncoder.encode(toIso, Charsets.UTF_8.name())}"
+        return getJson(path, auth = true) { json, _ ->
+            ScheduledBroadcastListResult(
+                success = true,
+                broadcasts = json.optJSONArray("broadcasts").toScheduledBroadcasts(),
+            )
+        }
+    }
+
+    fun createScheduledBroadcast(
+        title: String,
+        description: String?,
+        scheduledAtIso: String,
+        timeZone: String,
+        platform: String,
+        visibility: String,
+        expectedDurationMinutes: Int?,
+        saveAsDraft: Boolean,
+    ): ScheduledBroadcastResult {
+        val payload = JSONObject().apply {
+            put("title", title.trim())
+            put("description", description?.trim().orEmpty())
+            put("scheduled_at", scheduledAtIso)
+            put("time_zone", timeZone)
+            put("platform", platform)
+            put("visibility", visibility)
+            if (expectedDurationMinutes != null) {
+                put("expected_duration_minutes", expectedDurationMinutes)
+            }
+            put("save_as_draft", saveAsDraft)
+        }
+
+        return postJson("/api/broadcast/scheduled", payload, auth = true) { json, _ ->
+            val broadcastJson = json.optJSONObject("broadcast")
+                ?: return@postJson ScheduledBroadcastResult(
+                    success = false,
+                    error = "Broadcast missing from response",
+                )
+            ScheduledBroadcastResult(success = true, broadcast = parseScheduledBroadcast(broadcastJson))
         }
     }
 
@@ -756,6 +825,38 @@ class GpsApiClient(
         )
     }
 
+    private fun parseScheduledBroadcast(json: JSONObject): ScheduledBroadcastSummary {
+        val duration = if (json.isNull("expected_duration_minutes")) {
+            null
+        } else {
+            json.optInt("expected_duration_minutes")
+        }
+        return ScheduledBroadcastSummary(
+            id = json.optString("id"),
+            title = json.optString("title"),
+            description = json.optString("description").orEmpty(),
+            scheduledAt = json.optString("scheduled_at"),
+            timeZone = json.optString("time_zone").ifBlank { "America/Chicago" },
+            platform = json.optString("platform").ifBlank { "youtube" },
+            visibility = json.optString("visibility").ifBlank { "public" },
+            expectedDurationMinutes = duration,
+            status = json.optString("status"),
+            watchUrl = json.optString("watch_url").ifBlank { null },
+        )
+    }
+
+    private fun org.json.JSONArray?.toScheduledBroadcasts(): List<ScheduledBroadcastSummary> {
+        if (this == null) {
+            return emptyList()
+        }
+        return buildList {
+            for (index in 0 until length()) {
+                val item = optJSONObject(index) ?: continue
+                add(parseScheduledBroadcast(item))
+            }
+        }
+    }
+
     private fun Request.Builder.withDeviceAuth(required: Boolean = false): Request.Builder {
         val token = deviceToken?.trim().orEmpty()
         if (token.isNotEmpty()) {
@@ -891,6 +992,10 @@ class GpsApiClient(
                 ChaseDetailResult(success = false, error = message)
             request.url.encodedPath.contains("/chases/") && request.method == "PUT" ->
                 ChaseResult(success = false, error = message)
+            request.url.encodedPath.contains("/broadcast/scheduled") && request.method == "GET" ->
+                ScheduledBroadcastListResult(success = false, error = message)
+            request.url.encodedPath.contains("/broadcast/scheduled") && request.method == "POST" ->
+                ScheduledBroadcastResult(success = false, error = message)
             else -> PairResult(success = false, error = message)
         }
     }

@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta
+      name="description"
+      content="WeatherFront radar embedded with HeartlandStormChaser platform GPS"
+    />
+    <title>WeatherFront · HeartlandStormChaser</title>
+    <link rel="stylesheet" href="/css/base.css" />
+    <link rel="stylesheet" href="/css/components.css" />
+    <link rel="stylesheet" href="/css/weatherfront.css" />
+  </head>
+  <body data-page="weatherfront" class="weatherfront-body">
+    <header class="site-header">
+      <div class="site-header__inner">
+        <a class="site-logo" href="/">HeartlandStormChaser</a>
+        <nav class="site-nav" aria-label="Main navigation">
+          <a class="nav-link" href="/" data-nav="dashboard">Dashboard</a>
+          <a class="nav-link" href="/gps.html" data-nav="gps">GPS</a>
+          <a class="nav-link" href="/warnings.html" data-nav="warnings">Warnings</a>
+          <a class="nav-link" href="/overlays.html" data-nav="overlays">Overlays</a>
+          <a class="nav-link" href="/weatherfront/" data-nav="weatherfront">WeatherFront</a>
+          <a class="nav-link" href="/chases.html" data-nav="chases">Chases</a>
+          <a class="nav-link" href="/chasers-streams.html" data-nav="chasers-streams">Streams</a>
+          <a class="nav-link" href="/broadcast/control/" data-nav="broadcast">Broadcast</a>
+        </nav>
+      </div>
+    </header>
+
+    <main class="weatherfront-main">
+      <div class="weatherfront-embed" id="weatherfront-embed">
+        <div class="weatherfront-controls" id="weatherfront-controls">
+          <div class="weatherfront-gps-overlay" id="gps-status-banner" role="status" aria-live="polite">
+            <span class="weatherfront-gps-overlay__line" id="gps-line-device"></span>
+            <span class="weatherfront-gps-overlay__line" id="gps-line-status"></span>
+            <span class="weatherfront-gps-overlay__line" id="gps-line-coords"></span>
+            <span class="weatherfront-gps-overlay__line" id="gps-line-age"></span>
+          </div>
+          <button type="button" class="weatherfront-control-btn" id="weatherfront-reload-btn" title="Reload WeatherFront">Reload</button>
+          <div class="weatherfront-zoom-bar" id="weatherfront-zoom-bar" role="group" aria-label="Iframe zoom">
+            <button type="button" class="weatherfront-control-btn weatherfront-zoom-btn weatherfront-zoom-btn--active" data-zoom="100">100%</button>
+            <button type="button" class="weatherfront-control-btn weatherfront-zoom-btn" data-zoom="110">110%</button>
+            <button type="button" class="weatherfront-control-btn weatherfront-zoom-btn" data-zoom="125">125%</button>
+          </div>
+        </div>
+        <div class="weatherfront-embed__state" id="weatherfront-loading">Loading WeatherFront…</div>
+        <div class="weatherfront-embed__state weatherfront-embed__state--error weatherfront-embed__state--hidden" id="weatherfront-error">
+          WeatherFront could not be loaded.
+        </div>
+        <div class="weatherfront-embed__viewport" id="weatherfront-viewport">
+          <div class="weatherfront-embed__scaled" id="weatherfront-scaled">
+            <iframe
+              id="weatherfront-iframe"
+              class="weatherfront-embed__iframe weatherfront-embed__iframe--loading"
+              title="WeatherFront"
+              src="https://app.weatherfront.com"
+              allow="geolocation"
+            ></iframe>
+          </div>
+        </div>
+      </div>
+    </main>
+
+    <footer class="site-footer">
+      <p class="site-footer__tagline">HeartlandStormChaser · WeatherFront</p>
+      <div class="site-footer__auth" id="site-footer-auth">
+        <span class="site-footer__auth-user" id="site-footer-auth-user" hidden></span>
+        <a class="site-footer__auth-link" id="site-footer-sign-in" href="/login.html">Sign in</a>
+        <button type="button" class="btn btn--secondary btn--small site-footer__auth-btn" id="site-footer-sign-out" hidden>Sign out</button>
+      </div>
+    </footer>
+
+    <script src="/js/auth-footer.js"></script>
+    <script src="/js/gps-geolocation-override.js"></script>
+    <script src="/js/nav.js"></script>
+    <script type="module" src="/js/broadcast/camera-dock-persist.js"></script>
+    <script src="/js/weatherfront.js"></script>
+  </body>
+</html>

@@ -1,5 +1,5 @@
 import { BroadcastApi } from "./api.js";
-import { escapeHtml } from "./ui-utils.js";
+import { escapeHtml, youtubeWatchUrl } from "./ui-utils.js";
 
 function startOfMonth(d) {
   return new Date(d.getFullYear(), d.getMonth(), 1);
@@ -38,8 +38,8 @@ function emptyForm() {
     description: "",
     scheduled_local: stamp,
     time_zone: Intl.DateTimeFormat().resolvedOptions().timeZone || "America/Chicago",
-    platform: "obs",
-    visibility: "private",
+    platform: "youtube",
+    visibility: "public",
     expected_duration_minutes: 120,
     auto_start: false,
     auto_stop: false,
@@ -108,8 +108,8 @@ export function createScheduleModal(dialog, opts = {}) {
         description: broadcast.description || "",
         scheduled_local: local.toISOString().slice(0, 16),
         time_zone: broadcast.time_zone || "America/Chicago",
-        platform: broadcast.platform || "obs",
-        visibility: broadcast.visibility || "private",
+        platform: broadcast.platform || "youtube",
+        visibility: broadcast.visibility || "public",
         expected_duration_minutes: broadcast.expected_duration_minutes ?? 120,
         auto_start: Boolean(broadcast.auto_start),
         auto_stop: Boolean(broadcast.auto_stop),
@@ -239,7 +239,7 @@ export function createScheduleModal(dialog, opts = {}) {
             <button type="button" class="bcc-agenda__btn" data-open-detail="${escapeHtml(b.id)}">
               <strong>${escapeHtml(b.title)}</strong>
               <span>${escapeHtml(formatWhen(b.scheduled_at, b.time_zone))}</span>
-              <span class="bcc-agenda__meta">${escapeHtml(b.platform)} · ${escapeHtml(b.visibility)} · ${escapeHtml(b.status)}${b.is_selected ? " · selected" : ""}${b.status === "live" ? " · LIVE" : ""}</span>
+              <span class="bcc-agenda__meta">${escapeHtml(b.platform)} · ${escapeHtml(b.visibility)} · ${escapeHtml(b.status)}${b.is_selected ? " · selected" : ""}${b.status === "live" ? " · LIVE" : ""}${youtubeWatchUrl(b) ? " · watch link" : ""}</span>
             </button>
           </li>`,
           )
@@ -263,19 +263,19 @@ export function createScheduleModal(dialog, opts = {}) {
         <div class="bcc-sched-form__row">
           <label class="bcc-sched-form__field"><span>Platform</span>
             <select name="platform">
-              <option value="obs" ${form.platform === "obs" ? "selected" : ""}>OBS destination (supported)</option>
               <option value="youtube" ${form.platform === "youtube" ? "selected" : ""}>YouTube Live</option>
+              <option value="obs" ${form.platform === "obs" ? "selected" : ""}>OBS destination (supported)</option>
             </select>
           </label>
           <label class="bcc-sched-form__field"><span>Visibility</span>
             <select name="visibility">
-              <option value="private" ${form.visibility === "private" ? "selected" : ""}>Private</option>
-              <option value="unlisted" ${form.visibility === "unlisted" ? "selected" : ""}>Unlisted</option>
               <option value="public" ${form.visibility === "public" ? "selected" : ""}>Public</option>
+              <option value="unlisted" ${form.visibility === "unlisted" ? "selected" : ""}>Unlisted</option>
+              <option value="private" ${form.visibility === "private" ? "selected" : ""}>Private</option>
             </select>
           </label>
         </div>
-        <p class="bcc-sched-form__hint">YouTube Live requires Connect YouTube in Broadcast Settings. Thumbnail, latency, and DVR UI options are not exposed yet; auto-start/stop are sent to YouTube when supported. OBS still pushes RTMP using the stream key created during Prepare.</p>
+        <p class="bcc-sched-form__hint">YouTube Live requires Connect YouTube in Broadcast Settings. On Prepare, the platform creates the YouTube broadcast and pushes the RTMP server/key into Desktop OBS automatically (via the listener). Then Start streaming / Go Live from here — no paste into OBS needed.</p>
         <label class="bcc-sched-form__field"><span>Expected duration (minutes)</span><input type="number" min="1" name="expected_duration_minutes" value="${escapeHtml(String(form.expected_duration_minutes ?? ""))}" /></label>
         <div class="bcc-sched-form__row">
           <label class="bcc-sched-form__check"><input type="checkbox" name="auto_start" ${form.auto_start ? "checked" : ""} /> Auto-start preference</label>
@@ -308,6 +308,7 @@ export function createScheduleModal(dialog, opts = {}) {
     const b = broadcasts.find((x) => x.id === form.id);
     if (!b) return `<p class="bcc-empty">Broadcast not found.</p><button type="button" class="btn btn--secondary" data-form-cancel>Back</button>`;
     const canDelete = ["draft", "cancelled", "completed", "failed"].includes(b.status);
+    const watch = youtubeWatchUrl(b);
     return `
       <article class="bcc-sched-detail">
         <h3>${escapeHtml(b.title)}</h3>
@@ -320,6 +321,13 @@ export function createScheduleModal(dialog, opts = {}) {
           <div><dt>Starting scene</dt><dd>${escapeHtml(b.starting_scene || "—")}</dd></div>
           <div><dt>Main live scene</dt><dd>${escapeHtml(b.main_live_scene || "—")}</dd></div>
           <div><dt>Ending scene</dt><dd>${escapeHtml(b.ending_scene || "—")}</dd></div>
+          <div><dt>YouTube link</dt><dd>${
+            watch
+              ? `<a href="${escapeHtml(watch)}" target="_blank" rel="noopener noreferrer">${escapeHtml(watch)}</a>`
+              : b.platform === "youtube"
+                ? "Not created yet — run Prepare"
+                : "—"
+          }</dd></div>
         </dl>
         ${b.description ? `<p>${escapeHtml(b.description)}</p>` : ""}
         ${b.operator_notes ? `<p><em>${escapeHtml(b.operator_notes)}</em></p>` : ""}
@@ -384,8 +392,8 @@ export function createScheduleModal(dialog, opts = {}) {
     form.description = String(fd.get("description") || "");
     form.scheduled_local = String(fd.get("scheduled_local") || "");
     form.time_zone = String(fd.get("time_zone") || "");
-    form.platform = String(fd.get("platform") || "obs");
-    form.visibility = String(fd.get("visibility") || "private");
+    form.platform = String(fd.get("platform") || "youtube");
+    form.visibility = String(fd.get("visibility") || "public");
     form.expected_duration_minutes = Number(fd.get("expected_duration_minutes")) || null;
     form.auto_start = formEl.querySelector('[name="auto_start"]')?.checked || false;
     form.auto_stop = formEl.querySelector('[name="auto_stop"]')?.checked || false;
@@ -486,10 +494,19 @@ export function createScheduleModal(dialog, opts = {}) {
   }
 
   return {
-    open() {
+    /**
+     * @param {{ broadcastId?: string } | string} [options]
+     */
+    async open(options) {
+      const broadcastId =
+        typeof options === "string" ? options : options && typeof options === "object" ? options.broadcastId : null;
       mode = "list";
       if (typeof dialog.showModal === "function") dialog.showModal();
-      void load();
+      await load();
+      if (broadcastId) {
+        const existing = broadcasts.find((b) => b.id === broadcastId);
+        if (existing) openForm(existing);
+      }
     },
     close,
     refresh: load,

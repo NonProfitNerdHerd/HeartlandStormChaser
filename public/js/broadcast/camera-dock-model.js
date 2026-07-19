@@ -1,5 +1,8 @@
 /** @typedef {"front" | "dash"} DockRole */
 
+/** Cellular-safe ceiling for Truck Front / Truck Dash VDO publishes. */
+export const MAX_PUBLISH_BITRATE_KBPS = 2000;
+
 export const DOCK_CAMERAS = [
   {
     role: "front",
@@ -17,7 +20,7 @@ export const DOCK_CAMERAS = [
     pushUrl: "https://vdo.ninja/?push=heartland2012_truck_dash",
     viewUrl: "https://vdo.ninja/?view=heartland2012_truck_dash",
     obsSourceMatchers: ["truck_dash", "heartland2012_truck_dash"],
-    targetBitrateKbps: 1200,
+    targetBitrateKbps: 2000,
   },
 ];
 
@@ -52,28 +55,105 @@ export function saveStoredDeviceId(role, deviceId) {
  * @param {string | null} deviceLabel
  * @param {{ width: number, height: number, fps: number, targetBitrateKbps: number }} settings
  * @param {boolean} muted
+ * @param {string | null} [audioDeviceLabel]
  */
-export function buildVdoPublisherUrl(baseUrl, deviceLabel, settings, muted = true) {
+export function buildVdoPublisherUrl(
+  baseUrl,
+  deviceLabel,
+  settings,
+  muted = true,
+  audioDeviceLabel = null,
+) {
   const url = new URL(baseUrl);
+  const bitrate = Math.min(
+    Math.max(1, Number(settings.targetBitrateKbps) || MAX_PUBLISH_BITRATE_KBPS),
+    MAX_PUBLISH_BITRATE_KBPS,
+  );
   url.searchParams.set("webcam", "");
   url.searchParams.set("quality", "0");
   url.searchParams.set("width", String(settings.width));
   url.searchParams.set("height", String(settings.height));
   url.searchParams.set("frameRate", String(settings.fps));
-  url.searchParams.set("bitrate", String(settings.targetBitrateKbps));
+  url.searchParams.set("bitrate", String(bitrate));
+  // Hard ceiling so VDO doesn't climb past cellular-safe rates.
+  url.searchParams.set("maxbitrate", String(bitrate));
   url.searchParams.set("autostart", "");
   url.searchParams.set("nopreview", "");
+  url.searchParams.set("cleanoutput", "");
+  // Capture/send mic when unmuted — never play audio back in this iframe.
+  // (Do not set noaudio here; that would kill the outbound mic uplink.)
+  url.searchParams.set("deafen", "");
+  url.searchParams.set("volume", "0");
+  url.searchParams.delete("unmute");
+  // Enable iframe API so parent can request stats / lock bitrate / silence speakers.
+  url.searchParams.set("api", "");
   if (deviceLabel) {
     url.searchParams.set("videodevice", deviceLabel);
   }
   if (muted) {
     url.searchParams.set("audiodevice", "0");
     url.searchParams.set("mute", "");
+  } else if (audioDeviceLabel) {
+    url.searchParams.set("audiodevice", audioDeviceLabel);
+    url.searchParams.delete("mute");
   }
   return url.toString();
 }
 
 /**
+ * Force VDO iframe local speaker/monitor off. Does not affect outbound mic uplink
+ * when used on a publisher (push) iframe.
+ * @param {HTMLIFrameElement | null} iframe
+ */
+export function silenceVdoIframeOutput(iframe) {
+  if (!iframe?.contentWindow) return;
+  if (!iframe.src || iframe.src === "about:blank") return;
+  const win = iframe.contentWindow;
+  try {
+    win.postMessage({ volume: 0 }, "*");
+    win.postMessage({ action: "volume", volume: 0 }, "*");
+    win.postMessage({ action: "volume", value: 0 }, "*");
+    win.postMessage({ setVolume: 0 }, "*");
+    win.postMessage({ deafen: true }, "*");
+    win.postMessage({ action: "deafen" }, "*");
+    win.postMessage({ deaf: true }, "*");
+    win.postMessage({ speaker: false }, "*");
+    win.postMessage({ speakers: false }, "*");
+    win.postMessage({ speakerEnabled: false }, "*");
+    win.postMessage({ mutedPlayback: true }, "*");
+    win.postMessage({ playback: false }, "*");
+    win.postMessage({ monitor: false }, "*");
+    // Viewer-style mute (safe on health/view iframes; publishers ignore for uplink).
+    win.postMessage({ muted: true }, "*");
+    win.postMessage({ action: "mute-speaker" }, "*");
+  } catch {
+    /* cross-origin / not ready */
+  }
+}
+
+/**
+ * Keep silencing an iframe after load (VDO often enables speakers late).
+ * @param {HTMLIFrameElement | null} iframe
+ * @param {number} [durationMs]
+ */
+export function scheduleVdoIframeSilence(iframe, durationMs = 8000) {
+  if (!(iframe instanceof HTMLIFrameElement)) return;
+  const run = () => silenceVdoIframeOutput(iframe);
+  run();
+  const delays = [400, 1000, 2000, 4000, Math.max(5000, durationMs)];
+  delays.forEach((ms) => window.setTimeout(run, ms));
+  iframe.addEventListener(
+    "load",
+    () => {
+      run();
+      delays.forEach((ms) => window.setTimeout(run, ms));
+    },
+    { once: true },
+  );
+}
+
+/**
+ * Toggle outbound mic mute on a publisher iframe. Local speakers stay silenced.
  * @param {HTMLIFrameElement | null} iframe
  * @param {boolean} muted
  */
@@ -83,6 +163,28 @@ export function setVdoPublisherMuted(iframe, muted) {
   win.postMessage({ mute: muted }, "*");
   win.postMessage({ action: muted ? "mute" : "unmute" }, "*");
   win.postMessage({ mic: !muted }, "*");
+  // Unmuting mic must not turn local speaker monitor back on.
+  silenceVdoIframeOutput(iframe);
+  scheduleVdoIframeSilence(iframe);
+}
+
+/**
+ * Lock outbound video bitrate on a publisher iframe (kbps).
+ * @param {HTMLIFrameElement | null} iframe
+ * @param {number} bitrateKbps
+ */
+export function lockVdoPublisherBitrate(iframe, bitrateKbps) {
+  if (!iframe?.contentWindow) return;
+  const bitrate = Math.min(
+    Math.max(1, Number(bitrateKbps) || MAX_PUBLISH_BITRATE_KBPS),
+    MAX_PUBLISH_BITRATE_KBPS,
+  );
+  try {
+    iframe.contentWindow.postMessage({ bitrate, lock: true }, "*");
+    iframe.contentWindow.postMessage({ targetBitrate: bitrate }, "*");
+  } catch {
+    /* ignore */
+  }
 }
 
 export function loadStoredMuted(role) {
@@ -98,6 +200,67 @@ export function loadStoredMuted(role) {
 export function saveStoredMuted(role, muted) {
   try {
     localStorage.setItem(storageKey(role, "muted"), muted ? "1" : "0");
+  } catch {
+    /* ignore */
+  }
+}
+
+/** Shared mic for unmuted VDO publishers (USB / Bluetooth / built-in). */
+export function loadStoredMicDeviceId() {
+  try {
+    return localStorage.getItem(STORAGE_PREFIX + "mic_deviceId") || "";
+  } catch {
+    return "";
+  }
+}
+
+export function saveStoredMicDeviceId(deviceId) {
+  try {
+    if (deviceId) {
+      localStorage.setItem(STORAGE_PREFIX + "mic_deviceId", deviceId);
+    } else {
+      localStorage.removeItem(STORAGE_PREFIX + "mic_deviceId");
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadStoredMicLabel() {
+  try {
+    return localStorage.getItem(STORAGE_PREFIX + "mic_label") || "";
+  } catch {
+    return "";
+  }
+}
+
+export function saveStoredMicLabel(label) {
+  try {
+    if (label) {
+      localStorage.setItem(STORAGE_PREFIX + "mic_label", label);
+    } else {
+      localStorage.removeItem(STORAGE_PREFIX + "mic_label");
+    }
+  } catch {
+    /* ignore */
+  }
+}
+
+export function loadStoredPreviewRotated(role) {
+  try {
+    return localStorage.getItem(storageKey(role, "previewRotate")) === "180";
+  } catch {
+    return false;
+  }
+}
+
+export function saveStoredPreviewRotated(role, rotated) {
+  try {
+    if (rotated) {
+      localStorage.setItem(storageKey(role, "previewRotate"), "180");
+    } else {
+      localStorage.removeItem(storageKey(role, "previewRotate"));
+    }
   } catch {
     /* ignore */
   }
@@ -199,6 +362,26 @@ export function notifyPublisherWindowReload(reason = "reload") {
   }
 }
 
+/**
+ * Tell the publisher window which cameras the active OBS scene needs.
+ * @param {Record<string, boolean>} neededByRole
+ */
+export function notifyPublisherSceneNeeds(neededByRole) {
+  const channel = createPublisherChannel();
+  if (!channel) return;
+  try {
+    channel.postMessage({
+      type: "scene-needed",
+      needed: neededByRole,
+      at: Date.now(),
+    });
+  } catch {
+    /* ignore */
+  } finally {
+    channel.close();
+  }
+}
+
 /** OBS WebSocket sceneIndex 0 is bottom of the UI list — sort high→low for top-to-bottom. */
 export function scenesInObsUiOrder(scenes) {
   return [...(scenes || [])].sort((a, b) => (b.sceneIndex ?? 0) - (a.sceneIndex ?? 0));
@@ -216,6 +399,11 @@ export function reloadPublisherIframe(iframe, url) {
   window.setTimeout(() => {
     iframe.setAttribute("data-current-src", url);
     iframe.src = url;
+    scheduleVdoIframeSilence(iframe);
+    const bitrate = Number(new URL(url, window.location.href).searchParams.get("bitrate"));
+    window.setTimeout(() => {
+      lockVdoPublisherBitrate(iframe, bitrate || MAX_PUBLISH_BITRATE_KBPS);
+    }, 1500);
   }, 400);
 }
 
@@ -225,6 +413,14 @@ export async function listVideoDevices() {
   }
   const devices = await navigator.mediaDevices.enumerateDevices();
   return devices.filter((device) => device.kind === "videoinput");
+}
+
+export async function listAudioDevices() {
+  if (!navigator.mediaDevices?.enumerateDevices) {
+    return [];
+  }
+  const devices = await navigator.mediaDevices.enumerateDevices();
+  return devices.filter((device) => device.kind === "audioinput");
 }
 
 export async function ensureCameraPermission() {
@@ -292,8 +488,9 @@ export function audioLevelToBars(level) {
  * Shared local mic monitor for UI meters (one stream for all dock cards).
  * Uses attack/decay smoothing so bars rise on speech and fall cleanly.
  * @param {(level: number) => void} onLevel
+ * @param {() => string} [getDeviceId]
  */
-export function createAudioLevelMonitor(onLevel) {
+export function createAudioLevelMonitor(onLevel, getDeviceId) {
   let audioCtx = null;
   let analyser = null;
   let sourceNode = null;
@@ -302,6 +499,7 @@ export function createAudioLevelMonitor(onLevel) {
   let running = false;
   let smoothed = 0;
   let startPromise = null;
+  let activeDeviceId = "";
   /** @type {Uint8Array | null} */
   let freqData = null;
 
@@ -343,11 +541,15 @@ export function createAudioLevelMonitor(onLevel) {
   }
 
   async function start() {
-    if (running) {
+    const wantedId = typeof getDeviceId === "function" ? getDeviceId() || "" : "";
+    if (running && wantedId === activeDeviceId) {
       if (audioCtx?.state === "suspended") {
         await audioCtx.resume();
       }
       return;
+    }
+    if (running && wantedId !== activeDeviceId) {
+      await stop();
     }
     if (startPromise) {
       await startPromise;
@@ -355,14 +557,20 @@ export function createAudioLevelMonitor(onLevel) {
     }
 
     startPromise = (async () => {
+      /** @type {MediaTrackConstraints} */
+      const audio = {
+        echoCancellation: false,
+        noiseSuppression: false,
+        autoGainControl: true,
+      };
+      if (wantedId) {
+        audio.deviceId = { exact: wantedId };
+      }
       mediaStream = await navigator.mediaDevices.getUserMedia({
-        audio: {
-          echoCancellation: false,
-          noiseSuppression: false,
-          autoGainControl: true,
-        },
+        audio,
         video: false,
       });
+      activeDeviceId = wantedId;
       const AudioCtx = window.AudioContext || window.webkitAudioContext;
       audioCtx = new AudioCtx();
       if (audioCtx.state === "suspended") {
@@ -410,6 +618,7 @@ export function createAudioLevelMonitor(onLevel) {
       mediaStream.getTracks().forEach((track) => track.stop());
       mediaStream = null;
     }
+    activeDeviceId = "";
     smoothed = 0;
     onLevel(0);
   }
@@ -447,6 +656,39 @@ export function estimateMetrics(stream, targetBitrateKbps, publishing) {
 /**
  * @param {Array<{ name?: string, visible?: boolean }> | null | undefined} sources
  * @param {string[]} matchers
+ */
+function findMatchedSource(sources, matchers) {
+  const list = sources || [];
+  const lowerMatchers = matchers.map((m) => m.toLowerCase());
+  return (
+    list.find((source) => {
+      const name = String(source.name || "").toLowerCase();
+      return lowerMatchers.some((matcher) => name.includes(matcher));
+    }) || null
+  );
+}
+
+/**
+ * True when this dock camera should publish for the active OBS program scene.
+ * If OBS is disconnected we keep publishing (unknown need) so feeds stay warm.
+ * @param {Array<{ name?: string, visible?: boolean }> | null | undefined} sources
+ * @param {string[]} matchers
+ * @param {boolean} obsConnected
+ */
+export function isDockCameraNeededInScene(sources, matchers, obsConnected) {
+  if (!obsConnected) {
+    return true;
+  }
+  const match = findMatchedSource(sources, matchers);
+  if (!match) {
+    return false;
+  }
+  return match.visible !== false;
+}
+
+/**
+ * @param {Array<{ name?: string, visible?: boolean }> | null | undefined} sources
+ * @param {string[]} matchers
  * @param {boolean} obsConnected
  * @returns {"receiving" | "lost" | "unknown"}
  */
@@ -454,12 +696,7 @@ export function resolveObsReceiveStatus(sources, matchers, obsConnected) {
   if (!obsConnected) {
     return "unknown";
   }
-  const list = sources || [];
-  const lowerMatchers = matchers.map((m) => m.toLowerCase());
-  const match = list.find((source) => {
-    const name = String(source.name || "").toLowerCase();
-    return lowerMatchers.some((matcher) => name.includes(matcher));
-  });
+  const match = findMatchedSource(sources, matchers);
   if (!match) {
     return "lost";
   }
@@ -471,6 +708,9 @@ export function defaultSettings(targetBitrateKbps) {
     width: 1280,
     height: 720,
     fps: 30,
-    targetBitrateKbps,
+    targetBitrateKbps: Math.min(
+      Math.max(1, Number(targetBitrateKbps) || MAX_PUBLISH_BITRATE_KBPS),
+      MAX_PUBLISH_BITRATE_KBPS,
+    ),
   };
 }

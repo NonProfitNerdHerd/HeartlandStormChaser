@@ -54,7 +54,9 @@
                         android:inputType="textCapWords"
                         android:maxLines="1"
                         android:minHeight="72dp"
+                        android:paddingStart="16dp"
                         android:paddingTop="20dp"
+                        android:paddingEnd="16dp"
                         android:paddingBottom="20dp"
                         android:textSize="20sp" />
                 </com.google.android.material.textfield.TextInputLayout>
@@ -121,7 +123,7 @@
                     android:layout_marginTop="16dp"
                     android:hint="@string/label_overlay_ticker"
                     app:counterEnabled="true"
-                    app:counterMaxLength="500">
+                    app:counterMaxLength="1500">
 
                     <com.google.android.material.textfield.TextInputEditText
                         android:id="@+id/tickerInput"
@@ -129,7 +131,7 @@
                         android:layout_height="wrap_content"
                         android:gravity="top"
                         android:inputType="textCapSentences|textMultiLine"
-                        android:maxLength="500"
+                        android:maxLength="1500"
                         android:minHeight="72dp"
                         android:minLines="3"
                         android:paddingTop="16dp"

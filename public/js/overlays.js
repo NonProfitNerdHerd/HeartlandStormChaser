@@ -48,18 +48,6 @@
       status: "live",
       previewHeight: 96,
     },
-    {
-      id: "radar-gps",
-      label: "Radar + GPS",
-      title: "Platform GPS map with radar",
-      description:
-        "Map centered on the active platform GPS source with a looping CONUS Base Reflectivity radar (last ~2 hours / 24 frames, cached 3 days), location HUD, and controllable radar polling for OBS.",
-      path: "/overlays/radar/",
-      previewQuery: "preview=1",
-      configQuery: "config=1",
-      status: "live",
-      previewHeight: 280,
-    },
   ];
 
   var catalogEl = document.getElementById("overlay-catalog");

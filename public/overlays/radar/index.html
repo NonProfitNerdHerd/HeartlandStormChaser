@@ -50,7 +50,20 @@
         </label>
         <label class="radar-config__field">
           <span>Map zoom</span>
-          <input type="number" name="overlay_radar_zoom" min="3" max="16" step="1" value="8" />
+          <select name="overlay_radar_zoom">
+            <option value="4">4</option>
+            <option value="5">5</option>
+            <option value="6">6</option>
+            <option value="7">7</option>
+            <option value="8" selected>8</option>
+            <option value="9">9</option>
+            <option value="10">10</option>
+            <option value="11">11</option>
+            <option value="12">12</option>
+            <option value="13">13</option>
+            <option value="14">14</option>
+            <option value="15">15</option>
+          </select>
         </label>
         <label class="radar-config__field">
           <span>Radar opacity</span>
@@ -65,6 +78,9 @@
           </select>
         </label>
         <div class="radar-config__checks">
+          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_cities" checked /> Show cities</label>
+          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_highways" checked /> Show highways</label>
+          <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_hud" checked /> Show bottom-left HUD</label>
           <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_coords" checked /> Show coordinates</label>
           <label class="radar-config__check"><input type="checkbox" name="overlay_radar_show_updated" checked /> Show last GPS update</label>
         </div>

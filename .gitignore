@@ -11,6 +11,18 @@ node_modules/
 !.env.example
 !**/.env.example
 
+# Home GPS Bridge runtime
+tools/home-gps-bridge/runtime/*.pid
+tools/home-gps-bridge/logs/*
+!tools/home-gps-bridge/logs/.gitkeep
+!tools/home-gps-bridge/runtime/.gitkeep
+
+# WeatherFront OBS Controller (runtime stays in LOCALAPPDATA; ignore local accidents)
+tools/weatherfront-obs-controller/.env
+tools/weatherfront-obs-controller/node_modules/
+tools/weatherfront-obs-controller/playwright-report/
+tools/weatherfront-obs-controller/test-results/
+
 # OS / editor
 .DS_Store
 Thumbs.db

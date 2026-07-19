@@ -176,9 +176,50 @@ export function createHttpServer(config: ListenerConfig, controller: ObsControll
         return;
       }
 
+      if (url.pathname === "/stream/settings" && method === "GET") {
+        const info = await controller.getStreamServiceInfo();
+        sendJson(res, 200, {
+          ok: true,
+          streamServiceType: info.streamServiceType,
+          server: info.server,
+          isCustomRtmp: info.isCustomRtmp,
+        });
+        return;
+      }
+
+      if (url.pathname === "/stream/settings" && method === "POST") {
+        const body = await readJson(req);
+        const server =
+          typeof body.serverUrl === "string"
+            ? body.serverUrl
+            : typeof body.server === "string"
+              ? body.server
+              : "";
+        const key =
+          typeof body.streamKey === "string"
+            ? body.streamKey
+            : typeof body.key === "string"
+              ? body.key
+              : "";
+        const applied = await controller.setCustomRtmpDestination(server, key);
+        sendJson(res, 200, {
+          ok: true,
+          streamServiceType: applied.streamServiceType,
+          server: applied.server,
+          verified: applied.verified,
+          isCustomRtmp: true,
+          // Never echo the stream key back to the caller
+        });
+        return;
+      }
+
       if (url.pathname === "/stream/start" && method === "POST") {
-        await controller.startStream();
-        sendJson(res, 200, { ok: true });
+        const result = await controller.startStream();
+        sendJson(res, 200, {
+          ok: true,
+          streamingActive: result.streamingActive,
+          streamServiceType: result.streamServiceType,
+        });
         return;
       }
 
