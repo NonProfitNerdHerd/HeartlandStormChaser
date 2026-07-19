@@ -209,4 +209,10 @@
     <string name="switch_scene_activated">Switched to %1$s</string>
     <string name="error_load_scenes">Unable to load scenes.</string>
     <string name="error_activate_scene">Unable to switch scene.</string>
+    <string name="action_stop_streaming">Stop Streaming</string>
+    <string name="switch_no_stream_active">No stream active</string>
+    <string name="switch_stop_confirm_title">Stop streaming?</string>
+    <string name="switch_stop_confirm_message">This will stop the OBS stream output immediately.</string>
+    <string name="switch_stream_stopped">Stream stopped.</string>
+    <string name="error_stop_stream">Unable to stop stream.</string>
 </resources>

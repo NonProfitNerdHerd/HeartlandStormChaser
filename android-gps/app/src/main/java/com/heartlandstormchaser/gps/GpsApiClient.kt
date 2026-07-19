@@ -223,6 +223,7 @@ data class BroadcastScenesResult(
     val success: Boolean,
     val scenes: List<ObsSceneInfo> = emptyList(),
     val currentProgramScene: String? = null,
+    val streamingActive: Boolean = false,
     val obsConnected: Boolean = false,
     val listenerConnected: Boolean = false,
     val error: String? = null,
@@ -231,6 +232,11 @@ data class BroadcastScenesResult(
 data class ActivateSceneResult(
     val success: Boolean,
     val currentProgramScene: String? = null,
+    val error: String? = null,
+)
+
+data class StopStreamResult(
+    val success: Boolean,
     val error: String? = null,
 )
 
@@ -593,6 +599,7 @@ class GpsApiClient(
                 success = true,
                 scenes = json.optJSONArray("scenes").toObsScenes(),
                 currentProgramScene = json.optString("currentProgramScene").ifBlank { null },
+                streamingActive = json.optBoolean("streamingActive", false),
                 obsConnected = json.optBoolean("obsConnected", false),
                 listenerConnected = json.optBoolean("listenerConnected", false),
                 error = json.optString("error").ifBlank { null },
@@ -609,6 +616,12 @@ class GpsApiClient(
                 success = true,
                 currentProgramScene = json.optString("currentProgramScene").ifBlank { sceneName.trim() },
             )
+        }
+    }
+
+    fun stopBroadcastStream(): StopStreamResult {
+        return postJson("/api/broadcast/stream/stop", JSONObject(), auth = true) { _, _ ->
+            StopStreamResult(success = true)
         }
     }
 
@@ -1112,6 +1125,8 @@ class GpsApiClient(
                 BroadcastScenesResult(success = false, error = message)
             request.url.encodedPath.contains("/broadcast/scenes/activate") && request.method == "POST" ->
                 ActivateSceneResult(success = false, error = message)
+            request.url.encodedPath.contains("/broadcast/stream/stop") && request.method == "POST" ->
+                StopStreamResult(success = false, error = message)
             else -> PairResult(success = false, error = message)
         }
     }

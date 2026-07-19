@@ -451,6 +451,7 @@ export async function handleBroadcast(request: Request, env: Env): Promise<Respo
         ok: true,
         currentProgramScene: snapshot.currentProgramScene,
         scenes: snapshot.scenes,
+        streamingActive: Boolean(snapshot.streamingActive),
         obsConnected: snapshot.obsConnected,
         listenerConnected: snapshot.listenerConnected,
         error: snapshot.error || null,

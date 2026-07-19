@@ -10,4 +10,6 @@
     <color name="md_theme_on_error_container">#FECACA</color>
     <color name="md_theme_success">#4ADE80</color>
     <color name="md_theme_outline">#334155</color>
+    <color name="switch_stop_red">#DC2626</color>
+    <color name="switch_stop_text">#FFFFFF</color>
 </resources>
