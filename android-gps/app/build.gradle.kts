@@ -15,8 +15,8 @@ android {
         applicationId = "com.heartlandstormchaser.gps"
         minSdk = 26
         targetSdk = 34
-        versionCode = 13
-        versionName = "0.7.5"
+        versionCode = 15
+        versionName = "0.7.7"
         buildConfigField("String", "DEFAULT_API_BASE_URL", "\"$gpsApiBaseUrl\"")
     }
 

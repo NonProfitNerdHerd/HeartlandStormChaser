@@ -1,5 +1,6 @@
 package com.heartlandstormchaser.gps
 
+import android.app.Dialog
 import android.content.ActivityNotFoundException
 import android.content.Intent
 import android.net.Uri
@@ -7,6 +8,7 @@ import android.os.Bundle
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.view.WindowManager
 import android.widget.ArrayAdapter
 import android.widget.Toast
 import androidx.core.view.isVisible
@@ -17,6 +19,7 @@ import com.google.android.material.datepicker.MaterialDatePicker
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 import com.google.android.material.timepicker.MaterialTimePicker
 import com.google.android.material.timepicker.TimeFormat
+import com.heartlandstormchaser.gps.databinding.DialogCreateBroadcastBinding
 import com.heartlandstormchaser.gps.databinding.FragmentBroadcastBinding
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
@@ -36,6 +39,8 @@ class BroadcastFragment : Fragment() {
     private lateinit var preferences: GpsPreferences
     private lateinit var broadcastAdapter: BroadcastAdapter
 
+    private var formBinding: DialogCreateBroadcastBinding? = null
+    private var formDialog: Dialog? = null
     private var selectedDateTime: ZonedDateTime = ZonedDateTime.now(CentralTime.zone)
 
     private val timeZones = listOf(
@@ -78,13 +83,7 @@ class BroadcastFragment : Fragment() {
         binding.broadcastList.layoutManager = LinearLayoutManager(requireContext())
         binding.broadcastList.adapter = broadcastAdapter
 
-        setupDropdowns()
-        updateDateTimeField()
-
-        binding.broadcastDateTimeInput.setOnClickListener { pickDateTime() }
-        binding.broadcastDateTimeLayout.setEndIconOnClickListener { pickDateTime() }
-        binding.broadcastSaveDraftButton.setOnClickListener { submitBroadcast(saveAsDraft = true) }
-        binding.broadcastScheduleButton.setOnClickListener { submitBroadcast(saveAsDraft = false) }
+        binding.addBroadcastButton.setOnClickListener { showAddBroadcastDialog() }
     }
 
     override fun onResume() {
@@ -93,35 +92,84 @@ class BroadcastFragment : Fragment() {
     }
 
     override fun onDestroyView() {
+        formDialog?.dismiss()
+        formDialog = null
+        formBinding = null
         _binding = null
         super.onDestroyView()
     }
 
-    private fun setupDropdowns() {
-        binding.broadcastTimezoneInput.setAdapter(
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, timeZones),
-        )
-        binding.broadcastTimezoneInput.setText("America/Chicago", false)
+    private fun showAddBroadcastDialog() {
+        if (formDialog?.isShowing == true) {
+            return
+        }
 
-        val platformLabels = platformOptions.map { getString(it.labelRes) }
-        binding.broadcastPlatformInput.setAdapter(
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, platformLabels),
-        )
-        binding.broadcastPlatformInput.setText(getString(R.string.broadcast_platform_youtube), false)
+        val dialogBinding = DialogCreateBroadcastBinding.inflate(layoutInflater)
+        formBinding = dialogBinding
+        selectedDateTime = ZonedDateTime.now(CentralTime.zone)
 
-        val visibilityLabels = visibilityOptions.map { getString(it.labelRes) }
-        binding.broadcastVisibilityInput.setAdapter(
-            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, visibilityLabels),
+        setupFormDropdowns(dialogBinding)
+        updateDateTimeField(dialogBinding)
+
+        dialogBinding.broadcastDateTimeInput.setOnClickListener { pickDateTime() }
+        dialogBinding.broadcastDateTimeLayout.setEndIconOnClickListener { pickDateTime() }
+        dialogBinding.broadcastSaveDraftButton.setOnClickListener { submitBroadcast(saveAsDraft = true) }
+        dialogBinding.broadcastScheduleButton.setOnClickListener { submitBroadcast(saveAsDraft = false) }
+        dialogBinding.broadcastFormCloseButton.setOnClickListener { dismissFormDialog() }
+
+        val dialog = MaterialAlertDialogBuilder(requireContext())
+            .setView(dialogBinding.root)
+            .create()
+        dialog.setOnDismissListener {
+            if (formDialog === dialog) {
+                formDialog = null
+                formBinding = null
+            }
+        }
+        formDialog = dialog
+        dialog.show()
+        dialog.window?.setLayout(
+            WindowManager.LayoutParams.MATCH_PARENT,
+            WindowManager.LayoutParams.WRAP_CONTENT,
         )
-        binding.broadcastVisibilityInput.setText(getString(R.string.broadcast_visibility_public), false)
     }
 
-    private fun updateDateTimeField() {
-        binding.broadcastDateTimeInput.setText(selectedDateTime.format(displayFormatter))
+    private fun dismissFormDialog() {
+        formDialog?.dismiss()
+        formDialog = null
+        formBinding = null
+    }
+
+    private fun setupFormDropdowns(dialogBinding: DialogCreateBroadcastBinding) {
+        dialogBinding.broadcastTimezoneInput.setAdapter(
+            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, timeZones),
+        )
+        dialogBinding.broadcastTimezoneInput.setText("America/Chicago", false)
+
+        val platformLabels = platformOptions.map { getString(it.labelRes) }
+        dialogBinding.broadcastPlatformInput.setAdapter(
+            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, platformLabels),
+        )
+        dialogBinding.broadcastPlatformInput.setText(getString(R.string.broadcast_platform_youtube), false)
+
+        val visibilityLabels = visibilityOptions.map { getString(it.labelRes) }
+        dialogBinding.broadcastVisibilityInput.setAdapter(
+            ArrayAdapter(requireContext(), android.R.layout.simple_list_item_1, visibilityLabels),
+        )
+        dialogBinding.broadcastVisibilityInput.setText(getString(R.string.broadcast_visibility_public), false)
+    }
+
+    private fun updateDateTimeField(dialogBinding: DialogCreateBroadcastBinding = requireFormBinding()) {
+        dialogBinding.broadcastDateTimeInput.setText(selectedDateTime.format(displayFormatter))
+    }
+
+    private fun requireFormBinding(): DialogCreateBroadcastBinding {
+        return formBinding ?: error("Broadcast form is not open")
     }
 
     private fun pickDateTime() {
-        val zone = selectedZoneId()
+        val dialogBinding = formBinding ?: return
+        val zone = selectedZoneId(dialogBinding)
         val localDate = selectedDateTime.withZoneSameInstant(zone).toLocalDate()
         val utcMillis = localDate.atStartOfDay(ZoneOffset.UTC).toInstant().toEpochMilli()
 
@@ -146,7 +194,8 @@ class BroadcastFragment : Fragment() {
     }
 
     private fun pickTime() {
-        val zone = selectedZoneId()
+        val dialogBinding = formBinding ?: return
+        val zone = selectedZoneId(dialogBinding)
         val current = selectedDateTime.withZoneSameInstant(zone)
         val timePicker = MaterialTimePicker.Builder()
             .setTimeFormat(TimeFormat.CLOCK_12H)
@@ -161,100 +210,152 @@ class BroadcastFragment : Fragment() {
                 LocalTime.of(timePicker.hour, timePicker.minute),
                 zone,
             )
-            updateDateTimeField()
+            updateDateTimeField(dialogBinding)
         }
         timePicker.show(parentFragmentManager, "broadcast_time_picker")
     }
 
-    private fun selectedZoneId(): ZoneId {
-        val raw = binding.broadcastTimezoneInput.text?.toString()?.trim().orEmpty()
+    private fun selectedZoneId(dialogBinding: DialogCreateBroadcastBinding): ZoneId {
+        val raw = dialogBinding.broadcastTimezoneInput.text?.toString()?.trim().orEmpty()
         return runCatching { ZoneId.of(raw.ifBlank { "America/Chicago" }) }
             .getOrDefault(CentralTime.zone)
     }
 
-    private fun selectedPlatform(): String {
-        val label = binding.broadcastPlatformInput.text?.toString().orEmpty()
+    private fun selectedPlatform(dialogBinding: DialogCreateBroadcastBinding): String {
+        val label = dialogBinding.broadcastPlatformInput.text?.toString().orEmpty()
         return platformOptions.firstOrNull { getString(it.labelRes) == label }?.value ?: "youtube"
     }
 
-    private fun selectedVisibility(): String {
-        val label = binding.broadcastVisibilityInput.text?.toString().orEmpty()
+    private fun selectedVisibility(dialogBinding: DialogCreateBroadcastBinding): String {
+        val label = dialogBinding.broadcastVisibilityInput.text?.toString().orEmpty()
         return visibilityOptions.firstOrNull { getString(it.labelRes) == label }?.value ?: "public"
     }
 
     private fun submitBroadcast(saveAsDraft: Boolean) {
-        val title = binding.broadcastTitleInput.text?.toString()?.trim().orEmpty()
+        val dialogBinding = formBinding ?: return
+        val title = dialogBinding.broadcastTitleInput.text?.toString()?.trim().orEmpty()
         if (title.isBlank()) {
             Toast.makeText(requireContext(), R.string.error_broadcast_title_required, Toast.LENGTH_SHORT).show()
             return
         }
 
-        val description = binding.broadcastDescriptionInput.text?.toString()?.trim().orEmpty()
-        val timeZone = binding.broadcastTimezoneInput.text?.toString()?.trim().orEmpty()
+        val description = dialogBinding.broadcastDescriptionInput.text?.toString()?.trim().orEmpty()
+        val timeZone = dialogBinding.broadcastTimezoneInput.text?.toString()?.trim().orEmpty()
             .ifBlank { "America/Chicago" }
-        val durationText = binding.broadcastDurationInput.text?.toString()?.trim().orEmpty()
+        val durationText = dialogBinding.broadcastDurationInput.text?.toString()?.trim().orEmpty()
         val duration = durationText.toIntOrNull()
 
-        // Re-apply selected timezone to the wall-clock date/time before submitting.
-        val local = selectedDateTime.withZoneSameLocal(selectedZoneId())
+        val local = selectedDateTime.withZoneSameLocal(selectedZoneId(dialogBinding))
         selectedDateTime = local
         val scheduledAtIso = local.toInstant().toString()
+        val platform = selectedPlatform(dialogBinding)
+        val visibility = selectedVisibility(dialogBinding)
 
         setFormLoading(true)
         viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)
-            val result = withContext(Dispatchers.IO) {
+            val createResult = withContext(Dispatchers.IO) {
                 client.createScheduledBroadcast(
                     title = title,
                     description = description.ifBlank { null },
                     scheduledAtIso = scheduledAtIso,
                     timeZone = timeZone,
-                    platform = selectedPlatform(),
-                    visibility = selectedVisibility(),
+                    platform = platform,
+                    visibility = visibility,
                     expectedDurationMinutes = duration,
                     saveAsDraft = saveAsDraft,
                 )
             }
 
-            if (_binding == null || !isAdded) {
+            if (!isAdded) {
                 return@launch
             }
-            setFormLoading(false)
 
-            if (!result.success) {
+            if (!createResult.success || createResult.broadcast == null) {
+                setFormLoading(false)
                 Toast.makeText(
                     requireContext(),
-                    result.error ?: getString(R.string.error_create_broadcast),
+                    createResult.error ?: getString(R.string.error_create_broadcast),
                     Toast.LENGTH_LONG,
                 ).show()
                 return@launch
             }
 
-            Toast.makeText(
-                requireContext(),
-                if (saveAsDraft) R.string.broadcast_draft_saved else R.string.broadcast_scheduled,
-                Toast.LENGTH_SHORT,
-            ).show()
-            binding.broadcastTitleInput.setText("")
-            binding.broadcastDescriptionInput.setText("")
+            if (saveAsDraft) {
+                setFormLoading(false)
+                Toast.makeText(requireContext(), R.string.broadcast_draft_saved, Toast.LENGTH_SHORT).show()
+                dismissFormDialog()
+                refreshUpcoming()
+                return@launch
+            }
+
+            val broadcastId = createResult.broadcast.id
+            val selectResult = withContext(Dispatchers.IO) {
+                client.selectScheduledBroadcast(broadcastId)
+            }
+            if (!selectResult.success) {
+                setFormLoading(false)
+                Toast.makeText(
+                    requireContext(),
+                    getString(
+                        R.string.broadcast_scheduled_prepare_failed,
+                        selectResult.error ?: getString(R.string.error_prepare_broadcast),
+                    ),
+                    Toast.LENGTH_LONG,
+                ).show()
+                dismissFormDialog()
+                refreshUpcoming()
+                return@launch
+            }
+
+            val prepareResult = withContext(Dispatchers.IO) {
+                client.prepareScheduledBroadcast(broadcastId)
+            }
+
+            if (!isAdded) {
+                return@launch
+            }
+            setFormLoading(false)
+
+            if (prepareResult.success) {
+                Toast.makeText(
+                    requireContext(),
+                    R.string.broadcast_scheduled_prepared,
+                    Toast.LENGTH_SHORT,
+                ).show()
+            } else {
+                Toast.makeText(
+                    requireContext(),
+                    getString(
+                        R.string.broadcast_scheduled_prepare_failed,
+                        prepareResult.error ?: getString(R.string.error_prepare_broadcast),
+                    ),
+                    Toast.LENGTH_LONG,
+                ).show()
+            }
+
+            dismissFormDialog()
             refreshUpcoming()
         }
     }
 
     private fun setFormLoading(loading: Boolean) {
-        binding.broadcastFormProgress.isVisible = loading
-        binding.broadcastSaveDraftButton.isEnabled = !loading
-        binding.broadcastScheduleButton.isEnabled = !loading
+        val dialogBinding = formBinding ?: return
+        dialogBinding.broadcastFormProgress.isVisible = loading
+        dialogBinding.broadcastSaveDraftButton.isEnabled = !loading
+        dialogBinding.broadcastScheduleButton.isEnabled = !loading
+        dialogBinding.broadcastFormCloseButton.isEnabled = !loading
     }
 
     private fun refreshUpcoming() {
-        binding.broadcastListProgress.isVisible = true
-        binding.broadcastListMetaText.text = getString(R.string.broadcast_loading)
+        val listBinding = _binding ?: return
+        listBinding.broadcastListProgress.isVisible = true
+        listBinding.broadcastListMetaText.text = getString(R.string.broadcast_loading)
 
         val zone = CentralTime.zone
         val today = LocalDate.now(zone)
         val fromIso = today.atStartOfDay(zone).toInstant().toString()
-        val toIso = today.plusDays(3).atTime(LocalTime.MAX).atZone(zone).toInstant().toString()
+        val toIso = today.plusDays(7).atTime(LocalTime.MAX).atZone(zone).toInstant().toString()
 
         viewLifecycleOwner.lifecycleScope.launch {
             val client = GpsApiClient(preferences.serverUrl, preferences.deviceToken)

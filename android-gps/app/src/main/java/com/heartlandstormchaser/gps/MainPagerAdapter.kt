@@ -5,15 +5,16 @@ import androidx.fragment.app.FragmentActivity
 import androidx.viewpager2.adapter.FragmentStateAdapter
 
 class MainPagerAdapter(activity: FragmentActivity) : FragmentStateAdapter(activity) {
-    override fun getItemCount(): Int = 5
+    override fun getItemCount(): Int = 6
 
     override fun createFragment(position: Int): Fragment {
         return when (position) {
-            0 -> WarningsFragment()
+            0 -> GpsFragment()
             1 -> OverlaysFragment()
-            2 -> GpsFragment()
-            3 -> ChasesFragment()
-            else -> BroadcastFragment()
+            2 -> ChasesFragment()
+            3 -> WarningsFragment()
+            4 -> BroadcastFragment()
+            else -> SwitchFragment()
         }
     }
 }

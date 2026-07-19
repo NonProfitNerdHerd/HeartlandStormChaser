@@ -31,11 +31,12 @@ class MainActivity : AppCompatActivity() {
         binding.mainPager.offscreenPageLimit = 1
         TabLayoutMediator(binding.mainTabs, binding.mainPager) { tab, position ->
             tab.text = when (position) {
-                0 -> getString(R.string.tab_warnings)
+                0 -> getString(R.string.tab_gps)
                 1 -> getString(R.string.tab_overlays)
-                2 -> getString(R.string.tab_gps)
-                3 -> getString(R.string.tab_chases)
-                else -> getString(R.string.tab_broadcast)
+                2 -> getString(R.string.tab_chases)
+                3 -> getString(R.string.tab_warnings)
+                4 -> getString(R.string.tab_broadcast)
+                else -> getString(R.string.tab_switch)
             }
         }.attach()
     }

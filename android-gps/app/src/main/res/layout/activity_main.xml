@@ -18,6 +18,8 @@
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
         android:background="@color/md_theme_surface"
+        app:tabGravity="start"
+        app:tabMode="scrollable"
         app:tabIndicatorColor="@color/md_theme_primary"
         app:tabSelectedTextColor="@color/md_theme_on_surface"
         app:tabTextColor="@color/md_theme_on_surface" />

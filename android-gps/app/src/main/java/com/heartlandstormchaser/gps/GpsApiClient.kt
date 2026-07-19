@@ -214,6 +214,26 @@ data class ScheduledBroadcastListResult(
     val error: String? = null,
 )
 
+data class ObsSceneInfo(
+    val name: String,
+    val sceneIndex: Int = 0,
+)
+
+data class BroadcastScenesResult(
+    val success: Boolean,
+    val scenes: List<ObsSceneInfo> = emptyList(),
+    val currentProgramScene: String? = null,
+    val obsConnected: Boolean = false,
+    val listenerConnected: Boolean = false,
+    val error: String? = null,
+)
+
+data class ActivateSceneResult(
+    val success: Boolean,
+    val currentProgramScene: String? = null,
+    val error: String? = null,
+)
+
 class GpsApiClient(
     private val serverUrl: String,
     private val deviceToken: String? = null,
@@ -524,6 +544,71 @@ class GpsApiClient(
                     error = "Broadcast missing from response",
                 )
             ScheduledBroadcastResult(success = true, broadcast = parseScheduledBroadcast(broadcastJson))
+        }
+    }
+
+    fun selectScheduledBroadcast(broadcastId: String): ScheduledBroadcastResult {
+        return postJson("/api/broadcast/scheduled/$broadcastId/select", JSONObject(), auth = true) { json, _ ->
+            val broadcastJson = json.optJSONObject("broadcast")
+                ?: return@postJson ScheduledBroadcastResult(
+                    success = false,
+                    error = "Broadcast missing from response",
+                )
+            ScheduledBroadcastResult(success = true, broadcast = parseScheduledBroadcast(broadcastJson))
+        }
+    }
+
+    fun prepareScheduledBroadcast(broadcastId: String): ScheduledBroadcastResult {
+        return postJson("/api/broadcast/scheduled/$broadcastId/prepare", JSONObject(), auth = true) { json, _ ->
+            if (!json.optBoolean("ok", false)) {
+                return@postJson ScheduledBroadcastResult(
+                    success = false,
+                    error = json.optString("error").ifBlank { "Prepare failed" },
+                )
+            }
+            val broadcastJson = json.optJSONObject("broadcast")
+                ?: return@postJson ScheduledBroadcastResult(
+                    success = false,
+                    error = "Broadcast missing from response",
+                )
+            val parsed = parseScheduledBroadcast(broadcastJson)
+            val watchFromIngest = json.optJSONObject("youtube_ingest")
+                ?.optString("watch_url")
+                ?.trim()
+                ?.ifBlank { null }
+            ScheduledBroadcastResult(
+                success = true,
+                broadcast = if (watchFromIngest != null && parsed.watchUrl.isNullOrBlank()) {
+                    parsed.copy(watchUrl = watchFromIngest)
+                } else {
+                    parsed
+                },
+            )
+        }
+    }
+
+    fun fetchBroadcastScenes(): BroadcastScenesResult {
+        return getJson("/api/broadcast/scenes", auth = true) { json, _ ->
+            BroadcastScenesResult(
+                success = true,
+                scenes = json.optJSONArray("scenes").toObsScenes(),
+                currentProgramScene = json.optString("currentProgramScene").ifBlank { null },
+                obsConnected = json.optBoolean("obsConnected", false),
+                listenerConnected = json.optBoolean("listenerConnected", false),
+                error = json.optString("error").ifBlank { null },
+            )
+        }
+    }
+
+    fun activateBroadcastScene(sceneName: String): ActivateSceneResult {
+        val payload = JSONObject().apply {
+            put("sceneName", sceneName.trim())
+        }
+        return postJson("/api/broadcast/scenes/activate", payload, auth = true) { json, _ ->
+            ActivateSceneResult(
+                success = true,
+                currentProgramScene = json.optString("currentProgramScene").ifBlank { sceneName.trim() },
+            )
         }
     }
 
@@ -857,6 +942,33 @@ class GpsApiClient(
         }
     }
 
+    private fun org.json.JSONArray?.toObsScenes(): List<ObsSceneInfo> {
+        if (this == null) {
+            return emptyList()
+        }
+        return buildList {
+            for (index in 0 until length()) {
+                val obj = optJSONObject(index)
+                if (obj != null) {
+                    val name = obj.optString("name").trim()
+                    if (name.isNotEmpty()) {
+                        add(
+                            ObsSceneInfo(
+                                name = name,
+                                sceneIndex = obj.optInt("sceneIndex", index),
+                            ),
+                        )
+                    }
+                    continue
+                }
+                val asString = optString(index).trim()
+                if (asString.isNotEmpty()) {
+                    add(ObsSceneInfo(name = asString, sceneIndex = index))
+                }
+            }
+        }
+    }
+
     private fun Request.Builder.withDeviceAuth(required: Boolean = false): Request.Builder {
         val token = deviceToken?.trim().orEmpty()
         if (token.isNotEmpty()) {
@@ -996,6 +1108,10 @@ class GpsApiClient(
                 ScheduledBroadcastListResult(success = false, error = message)
             request.url.encodedPath.contains("/broadcast/scheduled") && request.method == "POST" ->
                 ScheduledBroadcastResult(success = false, error = message)
+            request.url.encodedPath.endsWith("/broadcast/scenes") && request.method == "GET" ->
+                BroadcastScenesResult(success = false, error = message)
+            request.url.encodedPath.contains("/broadcast/scenes/activate") && request.method == "POST" ->
+                ActivateSceneResult(success = false, error = message)
             else -> PairResult(success = false, error = message)
         }
     }
